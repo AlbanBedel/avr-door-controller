@@ -17,9 +17,9 @@ const struct door_ctrl_config doors_config[] PROGMEM = {
 	},
 	{
 		.door_id = 1,
-		.d0_irq = IRQ(PC, 23),
-		.d1_irq = IRQ(PC, 22),
-		.open_gpio = GPIO(C, 1),
+		.d0_irq = IRQ(PC, 22),
+		.d1_irq = IRQ(PC, 21),
+		.open_gpio = GPIO(C, 2),
 		.open_time = 4000,
 		.led_gpio = GPIO(D, 3),
 		.led_low_active = 1,
