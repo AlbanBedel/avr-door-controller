@@ -16,6 +16,7 @@ static void trigger_on_timeout(void *context)
 			tr->on_finished(tr->on_finished_context);
 		return;
 	}
+
 	/* Play the next step */
 	if (tr->gpio)
 		gpio_set_value(tr->gpio,
