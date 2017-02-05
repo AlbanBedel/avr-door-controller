@@ -7,6 +7,9 @@ static void trigger_on_timeout(void *context)
 {
 	struct trigger *tr = context;
 
+	while (tr->seq_pos < tr->seq_len && !tr->seq[tr->seq_pos])
+		tr->seq_pos++;
+
 	if (tr->seq_pos >= tr->seq_len) {
 		trigger_stop(tr);
 		if (tr->on_finished)
