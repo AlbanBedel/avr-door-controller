@@ -7,13 +7,7 @@
 #include "utils.h"
 #include "door-controller.h"
 
-/* This gives us 10 attempts before we reach the max of 30s */
-#define BLOCK_PER_ATTEMPT_DURATION  3000
-
-#define BUZZER_KEY_DURATION         100
 #define BUZZER_ERROR_DURATION	    400
-#define BUZZER_ACCEPTED_DURATION    100
-#define BUZZER_REJECTED_DURATION    400
 
 static const uint16_t buzzer_rejected_seq[] = {
 	0, 200, 600, 200, 600, 200, 600
