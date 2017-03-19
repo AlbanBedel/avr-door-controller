@@ -33,6 +33,8 @@ int8_t event_handler_remove(struct event_handler *hdlr);
 
 int8_t event_add(const void *source, uint8_t id, union event_val val);
 
+int8_t event_remove(const void *source, uint8_t id);
+
 void event_loop_run(uint8_t life_gpio);
 
 #endif /* EVENT_QUEUE_H */

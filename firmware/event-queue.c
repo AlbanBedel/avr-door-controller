@@ -99,6 +99,35 @@ int8_t event_add(const void *source, uint8_t id, union event_val val)
 	return ev ? 0 : -ENOMEM;
 }
 
+int8_t event_remove(const void *source, uint8_t id)
+{
+	struct event *ev, *prev, *next;
+
+	/* The source is mendatory */
+	if (!source)
+		return -EINVAL;
+
+	ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+		for (ev = events, prev = NULL; ev ; ev = next) {
+			next = ev->next;
+			if (ev->source != source || ev->id != id) {
+				prev = ev;
+				continue;
+			}
+			if (prev)
+				prev->next = next;
+			else
+				events = next;
+			if (!next)
+				events_tail = prev;
+			ev->next = NULL;
+			ev->source = NULL;
+		}
+	}
+
+	return 0;
+}
+
 static void event_run_handlers(struct event *ev)
 {
 	static struct event_handler *hdlr;
