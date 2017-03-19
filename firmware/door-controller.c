@@ -93,8 +93,6 @@ static void door_ctrl_open(struct door_ctrl *dc)
 	trigger_start(&dc->led_trigger, dc->open_time);
 	trigger_start_seq(&dc->buzzer_trigger, buzzer_accepted_seq,
 		      ARRAY_SIZE(buzzer_accepted_seq));
-
-	dc->reject_count = 0;
 }
 
 static void door_ctrl_reject(struct door_ctrl *dc)

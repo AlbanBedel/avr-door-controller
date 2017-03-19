@@ -63,7 +63,6 @@ struct door_ctrl {
 	struct trigger buzzer_trigger;
 	uint8_t buzzer_count;
 
-	uint8_t reject_count;
 	struct timer reject_timer;
 
 	door_ctrl_check check_key;
