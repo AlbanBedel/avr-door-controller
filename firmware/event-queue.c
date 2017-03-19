@@ -112,7 +112,8 @@ static void event_run_handlers(struct event *ev)
 	}
 }
 
-static void event_loop_run_once(void) {
+static void event_loop_run_once(void)
+{
 	struct event *ev;
 
 	/* Get the list's head */
@@ -133,7 +134,8 @@ static void event_loop_run_once(void) {
 	}
 }
 
-void event_loop_run(uint8_t life_gpio) {
+void event_loop_run(uint8_t life_gpio)
+{
 	gpio_direction_output(life_gpio, 1);
 	while (1) {
 		event_loop_run_once();

@@ -45,7 +45,7 @@ static uint8_t cnt_extension;
 /** Mask the timer interrupt */
 static void timer_mask_irq(void)
 {
-    TIMSK1 &= ~(TIMER_IRQ_MASK);
+	TIMSK1 &= ~(TIMER_IRQ_MASK);
 }
 
 /** Unmask the timer interrupt */
