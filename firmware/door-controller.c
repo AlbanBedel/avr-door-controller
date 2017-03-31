@@ -112,7 +112,7 @@ static void door_ctrl_reject(struct door_ctrl *dc)
 
 static void door_ctrl_error(struct door_ctrl *dc)
 {
-	door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+	door_ctrl_set_state(dc, DOOR_CTRL_ERROR);
 	trigger_start(&dc->buzzer_trigger, BUZZER_ERROR_DURATION);
 }
 
@@ -143,7 +143,7 @@ static void on_event(uint8_t event, union event_val val, void *context)
 		return;
 	case WIEGAND_READER_ERROR:
 		/* TODO: Handle protocol errors */
-		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+		door_ctrl_error(dc);
 		return;
 	case WIEGAND_READER_EVENT_KEY:
 	case WIEGAND_READER_EVENT_CARD:
@@ -174,9 +174,6 @@ static void on_event(uint8_t event, union event_val val, void *context)
 			else
 				door_ctrl_reject(dc);
 			break;
-		default:
-			door_ctrl_error(dc);
-			break;
 		}
 		break;
 	case DOOR_CTRL_READING_PIN:
@@ -198,10 +195,8 @@ static void on_event(uint8_t event, union event_val val, void *context)
 		break;
 	case DOOR_CTRL_OPENING:
 	case DOOR_CTRL_REJECTED:
-		/* Ignore events while we open the door */
-		break;
 	case DOOR_CTRL_ERROR:
-		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+		/* Ignore events while we open the door */
 		break;
 	}
 }
