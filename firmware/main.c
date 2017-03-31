@@ -18,30 +18,17 @@ static int8_t check_key(uint8_t door_id, uint8_t type,
 			uint32_t key, void *context)
 {
 	struct access_record rec;
-	const char *result;
 	int8_t err;
 
-	err = eeprom_find_access_record(key, &rec);
-	if (!err) {
-		if ((rec.pin && type != DOOR_CTRL_PIN) ||
-		    !(rec.doors & BIT(door_id))) {
-			result = "unauthorized";
-			err = -EPERM;
-		} else {
-			result = "authorized";
-		}
-	} else {
-		result = "unknown";
-	}
-
+	err = eeprom_find_access_record(door_id, type, key, &rec);
 	if (DEBUG) {
 		static char buffer[40];
 		static const char fmt[] PROGMEM =
-			"Door %d, %c %010ld -> %s\r\n";
+			"Door %d, %c %010ld -> %sauthorized\r\n";
 
 		snprintf_P(buffer, sizeof(buffer), fmt,
-			 door_id, (type == DOOR_CTRL_PIN) ? 'P' : 'C',
-			 key, result);
+			   door_id, (type == DOOR_CTRL_PIN) ? 'P' : 'C',
+			   key, err ? "un" :"");
 		uart_blocking_write(buffer);
 	}
 

@@ -6,17 +6,17 @@
 
 static struct eeprom_config config EEMEM;
 
-int8_t eeprom_find_access_record(uint32_t key, struct access_record *rec)
+int8_t eeprom_find_access_record(uint8_t door_id, uint8_t type,
+				 uint32_t key, struct access_record *rec)
 {
 	uint8_t i;
 
 	for (i = 0; i < ARRAY_SIZE(config.access); i++) {
-		rec->key = eeprom_read_dword(&config.access[i].key);
-		if (rec->key == key) {
-			eeprom_read_block(rec, &config.access[i],
-					  sizeof(*rec));
+		eeprom_read_block(rec, &config.access[i], sizeof(*rec));
+		if (!(rec->doors & BIT(door_id)))
+			continue;
+		if (rec->type == type && rec->key == key)
 			return 0;
-		}
 	}
 
 	return -ENOENT;

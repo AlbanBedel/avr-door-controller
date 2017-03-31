@@ -3,13 +3,16 @@
 
 #include <stdint.h>
 
+#define ACCESS_TYPE_NONE		0
+#define ACCESS_TYPE_PIN			1
+#define ACCESS_TYPE_CARD		2
+#define ACCESS_TYPE_CARD_AND_PIN	(ACCESS_TYPE_PIN | ACCESS_TYPE_CARD)
+
 struct access_record {
 	/* Pin code or card number */
 	uint32_t key;
 	/* Pin or key */
-	uint8_t pin    : 1;
-	/* Allow access to admin menu */
-	uint8_t admin  : 1;
+	uint8_t type   : 2;
 	uint8_t resvd  : 2;
 	/* Doors that can be opened with this token */
 	uint8_t doors  : 4;
@@ -40,7 +43,8 @@ struct eeprom_config {
 	struct access_record access[NUM_ACCESS_RECORDS];
 };
 
-int8_t eeprom_find_access_record(uint32_t key, struct access_record *rec);
+int8_t eeprom_find_access_record(uint8_t door_id, uint8_t type,
+				 uint32_t key, struct access_record *rec);
 
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg);
 

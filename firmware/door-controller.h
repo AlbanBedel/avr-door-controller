@@ -6,9 +6,11 @@
 #include "event-queue.h"
 #include "trigger.h"
 #include "timer.h"
+#include "eeprom.h"
 
-#define DOOR_CTRL_CARD	0
-#define DOOR_CTRL_PIN	1
+#define DOOR_CTRL_CARD		ACCESS_TYPE_CARD
+#define DOOR_CTRL_PIN		ACCESS_TYPE_PIN
+#define DOOR_CTRL_CARD_AND_PIN	ACCESS_TYPE_CARD_AND_PIN
 
 typedef int8_t (*door_ctrl_check)(
 	uint8_t door_id, uint8_t type, uint32_t key, void *context);
