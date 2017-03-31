@@ -30,7 +30,7 @@ LDFLAGS=-Os				\
 	-fwhole-program			\
 
 ifeq ($(LTO),y)
-CFLAGS += -flto -fuse-linker-plugin
+CFLAGS += -flto -fuse-linker-plugin -ffat-lto-objects
 LDFLAGS += -flto
 else
 CFLAGS += -g3
