@@ -7,10 +7,15 @@
 #include "utils.h"
 #include "door-controller.h"
 
-#define BUZZER_ERROR_DURATION	    400
+#define IDLE_TIMEOUT			10000
+#define BUZZER_ERROR_DURATION		400
 
 static const uint16_t buzzer_rejected_seq[] = {
 	0, 200, 600, 200, 600, 200, 600
+};
+
+static const uint16_t buzzer_timeout_seq[] = {
+	0, 100, 200, 100, 200, 100, 200
 };
 
 static const uint16_t buzzer_accepted_seq[] = {
@@ -26,6 +31,7 @@ static const char *state_names[] = {
 	"READ PIN",
 	"OPENING",
 	"REJECT",
+	"TIMEOUT",
 	"ERROR",
 };
 
@@ -55,18 +61,32 @@ static void door_ctrl_show_state(struct door_ctrl *dc, enum door_state state)
 
 static void door_ctrl_set_state(struct door_ctrl *dc, enum door_state state)
 {
+	/* Do nothing if the state doesn't change */
+	if (dc->state == state)
+		return;
+
 	dc->state = state;
+	/* If the new state ends the processing deschdule the idle timer */
+	switch (state) {
+	case DOOR_CTRL_IDLE:
+	case DOOR_CTRL_REJECTED:
+	case DOOR_CTRL_OPENING:
+	case DOOR_CTRL_ERROR:
+		timer_deschedule(&dc->idle_timer);
+		event_remove(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT);
+		break;
+	}
 #if DEBUG
 	event_add(&dc->wr, DOOR_CTRL_EVENT_STATE_CHANGED,
 		  EVENT_VAL((uint32_t)state));
 #endif
 }
 
-void idle_on_timeout(void *context)
+void on_idle_timeout(void *context)
 {
 	struct door_ctrl *dc = context;
 
-	door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+	event_add(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT, EVENT_VAL(NULL));
 }
 
 void on_open_finished(void *context)
@@ -110,6 +130,13 @@ static void door_ctrl_reject(struct door_ctrl *dc)
 			  ARRAY_SIZE(buzzer_rejected_seq));
 }
 
+static void door_ctrl_timeout(struct door_ctrl *dc)
+{
+	door_ctrl_set_state(dc, DOOR_CTRL_TIMEOUT);
+	trigger_start_seq(&dc->buzzer_trigger, buzzer_timeout_seq,
+			  ARRAY_SIZE(buzzer_timeout_seq));
+}
+
 static void door_ctrl_error(struct door_ctrl *dc)
 {
 	door_ctrl_set_state(dc, DOOR_CTRL_ERROR);
@@ -141,6 +168,9 @@ static void on_event(uint8_t event, union event_val val, void *context)
 	case DOOR_CTRL_EVENT_OPEN_FINISHED:
 		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
 		return;
+	case DOOR_CTRL_EVENT_IDLE_TIMEOUT:
+		door_ctrl_timeout(dc);
+		return;
 	case WIEGAND_READER_ERROR:
 		/* TODO: Handle protocol errors */
 		door_ctrl_error(dc);
@@ -166,6 +196,7 @@ static void on_event(uint8_t event, union event_val val, void *context)
 			 * the "unused bits" with 1'. */
 			dc->pin = (-1 & ~0xF) | (val.u & 0xF);
 			door_ctrl_set_state(dc, DOOR_CTRL_READING_PIN);
+			timer_schedule_in(&dc->idle_timer, IDLE_TIMEOUT);
 			break;
 		case WIEGAND_READER_EVENT_CARD:
 			if (door_ctrl_check_key(
@@ -191,10 +222,12 @@ static void on_event(uint8_t event, union event_val val, void *context)
 		} else {
 			dc->pin <<= 4;
 			dc->pin = (dc->pin & ~0xF) | (val.u & 0xF);
+			timer_schedule_in(&dc->idle_timer, IDLE_TIMEOUT);
 		}
 		break;
 	case DOOR_CTRL_OPENING:
 	case DOOR_CTRL_REJECTED:
+	case DOOR_CTRL_TIMEOUT:
 	case DOOR_CTRL_ERROR:
 		/* Ignore events while we open the door */
 		break;
@@ -221,7 +254,7 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 	dc->hdlr.handler = on_event;
 	dc->hdlr.context = dc;
 
-	timer_init(&dc->reject_timer, idle_on_timeout, dc);
+	timer_init(&dc->idle_timer, on_idle_timeout, dc);
 
 	err = event_handler_add(&dc->hdlr);
 	if (err)

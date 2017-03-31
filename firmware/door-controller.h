@@ -38,12 +38,14 @@ enum door_state {
 	DOOR_CTRL_READING_PIN,
 	DOOR_CTRL_OPENING,
 	DOOR_CTRL_REJECTED,
+	DOOR_CTRL_TIMEOUT,
 	DOOR_CTRL_ERROR,
 };
 
 #define DOOR_CTRL_EVENT_STATE_CHANGED		10
 #define DOOR_CTRL_EVENT_BUZZER_FINISHED		11
 #define DOOR_CTRL_EVENT_OPEN_FINISHED		12
+#define DOOR_CTRL_EVENT_IDLE_TIMEOUT		13
 
 struct door_ctrl {
 	uint8_t door_id;
@@ -61,7 +63,7 @@ struct door_ctrl {
 	struct trigger buzzer_trigger;
 	uint8_t buzzer_count;
 
-	struct timer reject_timer;
+	struct timer idle_timer;
 
 	door_ctrl_check check_key;
 	void *check_context;
