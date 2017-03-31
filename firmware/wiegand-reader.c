@@ -42,7 +42,6 @@ static void wiegand_reader_event(struct wiegand_reader *wr,
 	event_add(wr, event, EVENT_VAL(val));
 }
 
-
 static int8_t wiegand_reader_process_4bits_code(struct wiegand_reader *wr)
 {
 	uint8_t key = 0;
@@ -139,6 +138,7 @@ void wiegand_reader_data_pin_changed(struct wiegand_reader *wr,
 	case 0: /* No reader */
 		wr->num_bits = 0;
 		timer_deschedule(&wr->word_timeout);
+		wiegand_reader_event(wr, WIEGAND_READER_ERROR, -ENODEV);
 		return;
 	case 1: /* 1 bit */
 		if (wr->num_bits < sizeof(wr->bits) * 8)
