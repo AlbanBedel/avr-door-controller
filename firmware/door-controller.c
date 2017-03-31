@@ -146,6 +146,7 @@ static void door_ctrl_error(struct door_ctrl *dc)
 static void on_event(uint8_t event, union event_val val, void *context)
 {
 	struct door_ctrl *dc = context;
+	uint8_t key;
 
 #if DEBUG
 	{
@@ -208,20 +209,23 @@ static void on_event(uint8_t event, union event_val val, void *context)
 		}
 		break;
 	case DOOR_CTRL_READING_PIN:
-		if (event != WIEGAND_READER_EVENT_KEY) {
-			door_ctrl_error(dc);
-			break;
+		if (event == WIEGAND_READER_EVENT_CARD) {
+			dc->pin ^= val.u;
+			key = WIEGAND_KEY_ENTER;
+		} else {
+			key = val.u;
 		}
-		if (val.u == WIEGAND_KEY_ENTER) {
-			if (door_ctrl_check_key(
-				    dc, DOOR_CTRL_PIN, dc->pin) == 0)
+		if (key == WIEGAND_KEY_ENTER) {
+			uint8_t type = (event == WIEGAND_READER_EVENT_CARD) ?
+				DOOR_CTRL_CARD_AND_PIN : DOOR_CTRL_PIN;
+			if (door_ctrl_check_key(dc, type, dc->pin) == 0)
 				door_ctrl_open(dc);
 			else
 				door_ctrl_reject(dc);
 			dc->pin = 0;
 		} else {
 			dc->pin <<= 4;
-			dc->pin = (dc->pin & ~0xF) | (val.u & 0xF);
+			dc->pin = (dc->pin & ~0xF) | (key & 0xF);
 			timer_schedule_in(&dc->idle_timer, IDLE_TIMEOUT);
 		}
 		break;
