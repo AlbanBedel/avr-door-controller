@@ -64,7 +64,8 @@ static int init_doors(void)
 		cfg.check_key = check_key;
 
 		eeprom_get_door_config(i, &eeprom_cfg);
-		if (eeprom_cfg.open_time < INT16_MAX / 2)
+		if (eeprom_cfg.open_time > 0 &&
+		    eeprom_cfg.open_time < INT16_MAX / 2)
 			cfg.open_time = eeprom_cfg.open_time;
 
 		err = door_ctrl_init(&dc[i], &cfg);

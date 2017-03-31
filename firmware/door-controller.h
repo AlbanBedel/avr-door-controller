@@ -41,17 +41,15 @@ enum door_state {
 	DOOR_CTRL_ERROR,
 };
 
-#define DOOR_CTRL_EVENT_STATE_CHANGED 0
+#define DOOR_CTRL_EVENT_STATE_CHANGED		10
+#define DOOR_CTRL_EVENT_BUZZER_FINISHED		11
+#define DOOR_CTRL_EVENT_OPEN_FINISHED		12
 
 struct door_ctrl {
 	uint8_t door_id;
 
 	struct wiegand_reader wr;
-	struct event_handler wr_hdlr;
-
-#if DEBUG
-	struct event_handler state_change_hdlr;
-#endif
+	struct event_handler hdlr;
 	enum door_state state;
 
 	uint32_t pin;

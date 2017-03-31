@@ -39,15 +39,17 @@ static const char *state_name(enum door_state state)
 		return state_names[state];
 }
 
-static void door_ctrl_show_state(uint8_t event, union event_val val,
-				 void *context)
+static void door_ctrl_show_state(struct door_ctrl *dc, enum door_state state)
 {
-	static const char fmt[] PROGMEM = "[%d]-> %lx (%s)\r\n";
-	struct door_ctrl *dc = context;
+	static const char fmt[] PROGMEM = "[%d]-> %x (%s)\r\n";
 
 	snprintf_P(print_buf, sizeof(print_buf), fmt,
-		   dc->door_id, val.u, state_name(val.u));
+		   dc->door_id, state, state_name(state));
 	uart_blocking_write(print_buf);
+}
+#else
+static void door_ctrl_show_state(struct door_ctrl *dc, enum door_state state)
+{
 }
 #endif
 
@@ -55,7 +57,7 @@ static void door_ctrl_set_state(struct door_ctrl *dc, enum door_state state)
 {
 	dc->state = state;
 #if DEBUG
-	event_add(dc, DOOR_CTRL_EVENT_STATE_CHANGED,
+	event_add(&dc->wr, DOOR_CTRL_EVENT_STATE_CHANGED,
 		  EVENT_VAL((uint32_t)state));
 #endif
 }
@@ -67,14 +69,18 @@ void idle_on_timeout(void *context)
 	door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
 }
 
+void on_open_finished(void *context)
+{
+	struct door_ctrl *dc = context;
+
+	event_add(&dc->wr, DOOR_CTRL_EVENT_OPEN_FINISHED, EVENT_VAL(NULL));
+}
+
 void on_buzzer_finished(void *context)
 {
 	struct door_ctrl *dc = context;
 
-	switch (dc->state) {
-	case DOOR_CTRL_REJECTED:
-		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
-	}
+	event_add(&dc->wr, DOOR_CTRL_EVENT_BUZZER_FINISHED, EVENT_VAL(NULL));
 }
 
 static int8_t door_ctrl_check_key(struct door_ctrl *dc,
@@ -110,7 +116,7 @@ static void door_ctrl_error(struct door_ctrl *dc)
 	trigger_start(&dc->buzzer_trigger, BUZZER_ERROR_DURATION);
 }
 
-static void on_wiegand_event(uint8_t event, union event_val val, void *context)
+static void on_event(uint8_t event, union event_val val, void *context)
 {
 	struct door_ctrl *dc = context;
 
@@ -124,9 +130,26 @@ static void on_wiegand_event(uint8_t event, union event_val val, void *context)
 	}
 #endif
 
-	/* TODO: Handle protocol errors */
-	if (event == WIEGAND_READER_ERROR) {
+	switch(event) {
+	case DOOR_CTRL_EVENT_STATE_CHANGED:
+		door_ctrl_show_state(dc, val.u);
+		return;
+	case DOOR_CTRL_EVENT_BUZZER_FINISHED:
+		if (dc->state != DOOR_CTRL_OPENING)
+			door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+		return;
+	case DOOR_CTRL_EVENT_OPEN_FINISHED:
 		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+		return;
+	case WIEGAND_READER_ERROR:
+		/* TODO: Handle protocol errors */
+		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
+		return;
+	case WIEGAND_READER_EVENT_KEY:
+	case WIEGAND_READER_EVENT_CARD:
+		break;
+	default:
+		door_ctrl_error(dc);
 		return;
 	}
 
@@ -199,13 +222,13 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 	dc->check_key = cfg->check_key;
 	dc->check_context = cfg->check_context;
 
-	dc->wr_hdlr.source = &dc->wr;
-	dc->wr_hdlr.handler = on_wiegand_event;
-	dc->wr_hdlr.context = dc;
+	dc->hdlr.source = &dc->wr;
+	dc->hdlr.handler = on_event;
+	dc->hdlr.context = dc;
 
 	timer_init(&dc->reject_timer, idle_on_timeout, dc);
 
-	err = event_handler_add(&dc->wr_hdlr);
+	err = event_handler_add(&dc->hdlr);
 	if (err)
 		return err;
 
@@ -214,7 +237,7 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 		return err;
 
 	err = trigger_init(&dc->open_trigger, cfg->open_gpio,
-			   cfg->open_low_active, idle_on_timeout, dc);
+			   cfg->open_low_active, on_open_finished, dc);
 	if (err)
 		return err;
 
@@ -227,13 +250,6 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 			   cfg->buzzer_low_active, on_buzzer_finished, dc);
 	if (err)
 		return err;
-
-#if DEBUG
-	dc->state_change_hdlr.source = dc;
-	dc->state_change_hdlr.handler =	door_ctrl_show_state;
-	dc->state_change_hdlr.context = dc;
-	event_handler_add(&dc->state_change_hdlr);
-#endif
 
 	return 0;
 }
