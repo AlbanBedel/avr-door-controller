@@ -13,7 +13,7 @@ struct wiegand_reader {
 	struct timer word_timeout;
 };
 
-#define WIEGAND_READER_ERROR		(-1)
+#define WIEGAND_READER_ERROR		0xFF
 #define WIEGAND_READER_EVENT_KEY	0
 #define WIEGAND_READER_EVENT_CARD	1
 
