@@ -14,6 +14,10 @@ struct eeprom_config {
 	struct access_record access[NUM_ACCESS_RECORDS];
 };
 
+int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec);
+
+int8_t eeprom_set_access_record(uint16_t id, const struct access_record *rec);
+
 int8_t eeprom_find_access_record(uint8_t door_id, uint8_t type,
 				 uint32_t key, struct access_record *rec);
 
