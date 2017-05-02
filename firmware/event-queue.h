@@ -11,6 +11,10 @@ union event_val {
 };
 
 #define EVENT_VAL(v) ((union event_val)(v))
+#define EVENT_CHAR(c) EVENT_VAL((char)(c))
+#define EVENT_INT(i)  EVENT_VAL((int32_t)(i))
+#define EVENT_UINT(i) EVENT_VAL((uint32_t)(i))
+#define EVENT_PTR(p)  EVENT_VAL((void *)(p))
 
 typedef void (*event_handler_cb)(
 	uint8_t event, union event_val val, void *context);
