@@ -15,4 +15,6 @@
 
 #define ARRAY_SIZE(a)		(sizeof(a) / sizeof(*(a)))
 
+#define PACKED			__attribute__((packed))
+
 #endif /* UTILS_H */

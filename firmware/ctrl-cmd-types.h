@@ -11,7 +11,7 @@ struct ctrl_msg {
 	uint8_t type;
 	uint8_t length;
 	uint8_t payload[CTRL_MSG_MAX_PAYLOAD_SIZE];
-};
+} PACKED;
 
 /* Input:  none
  * Output: struct device_descriptor
@@ -49,24 +49,24 @@ struct device_descriptor {
 
 	uint8_t num_doors;
 	uint16_t num_access_records;
-};
+} PACKED;
 
 struct ctrl_cmd_get_door_config {
 	uint8_t index;
-};
+} PACKED;
 
 struct ctrl_cmd_set_door_config {
 	uint8_t index;
 	struct door_config config;
-};
+} PACKED;
 
 struct ctrl_cmd_get_access_record {
 	uint16_t index;
-};
+} PACKED;
 
 struct ctrl_cmd_set_access_record {
 	uint16_t index;
 	struct access_record record;
-};
+} PACKED;
 
 #endif /* CTRL_CMD_TYPES_H */

@@ -2,6 +2,7 @@
 #define EEPROM_TYPES_H
 
 #include <stdint.h>
+#include "utils.h"
 
 #define ACCESS_TYPE_NONE		0
 #define ACCESS_TYPE_PIN			1
@@ -16,7 +17,7 @@ struct access_record {
 	uint8_t resvd  : 2;
 	/* Doors that can be opened with this token */
 	uint8_t doors  : 4;
-};
+} PACKED;
 
 struct door_config {
 	/* Time the door should stay open in ms */
@@ -30,6 +31,6 @@ struct door_config {
 
 	/* Reserved */
 	uint8_t reserved[];
-};
+} PACKED;
 
 #endif /* EEPROM_TYPES_H */
