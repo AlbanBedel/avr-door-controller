@@ -12,6 +12,7 @@
 #include "eeprom.h"
 #include "utils.h"
 #include "uart.h"
+#include "ctrl-cmd.h"
 #include "gpio.h"
 
 static int8_t check_key(uint8_t door_id, uint8_t type,
@@ -71,7 +72,7 @@ int main(void)
 	clock_prescale_set(clock_div_1);
 	timers_init();
 
-	err = uart_init(UART_DIRECTION_BOTH, 38400, 1, UART_PARITY_NONE);
+	err = ctrl_cmd_init();
 	if (!err)
 		err = init_doors();
 

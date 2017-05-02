@@ -49,6 +49,8 @@ avr-door-controller.elf_DEPS :=		\
 	timer.o				\
 	trigger.o			\
 	uart.o				\
+	uart-ctrl-transport.o		\
+	ctrl-cmd.o			\
 	wiegand-reader.o		\
 
 avr-door-controller.flash.ihex_DEPS :=	\
