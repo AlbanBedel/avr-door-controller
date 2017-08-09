@@ -22,6 +22,8 @@ int8_t eeprom_has_access(uint8_t type, uint32_t key, uint8_t door_id);
 
 int8_t eeprom_set_access(uint8_t type, uint32_t key, uint8_t doors);
 
+void eeprom_remove_all_access(void);
+
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg);
 
 int8_t eeprom_set_door_config(uint8_t id, const struct door_config *cfg);

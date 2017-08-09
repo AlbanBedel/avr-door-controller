@@ -97,6 +97,14 @@ static int8_t ctrl_cmd_set_access(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
+static int8_t ctrl_cmd_remove_all_access(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	eeprom_remove_all_access();
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
 static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 	{
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
@@ -127,6 +135,11 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_SET_ACCESS,
 		.length  = sizeof(struct access_record),
 		.handler = ctrl_cmd_set_access,
+	},
+	{
+		.type    = CTRL_CMD_REMOVE_ALL_ACCESS,
+		.length  = 0,
+		.handler = ctrl_cmd_remove_all_access,
 	},
 };
 

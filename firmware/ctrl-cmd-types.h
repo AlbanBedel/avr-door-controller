@@ -43,6 +43,12 @@ struct ctrl_msg {
  */
 #define CTRL_CMD_SET_ACCESS		22
 
+/* Input:  none
+ * Output: none
+ */
+#define CTRL_CMD_REMOVE_ALL_ACCESS	23
+
+
 /* Payload depend on the query */
 #define CTRL_CMD_OK			0
 /* Payload is an error code (int8_t) */

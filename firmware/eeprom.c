@@ -102,6 +102,21 @@ int8_t eeprom_set_access(uint8_t type, uint32_t key, uint8_t doors)
 	return eeprom_set_access_record(index, &rec);
 }
 
+void eeprom_remove_all_access(void)
+{
+	struct access_record rec;
+	uint16_t i;
+
+	for (i = 0; i < ARRAY_SIZE(config.access); i++) {
+		eeprom_read_block(&rec, &config.access[i], sizeof(rec));
+		if (rec.invalid || rec.type == ACCESS_TYPE_NONE)
+			continue;
+
+		rec.type = ACCESS_TYPE_NONE;
+		eeprom_write_block(&rec, &config.access[i], sizeof(rec));
+	}
+}
+
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg)
 {
 	if (id >= ARRAY_SIZE(config.door))
