@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <errno.h>
+#include <avr/pgmspace.h>
 #include "uart.h"
 #include "uart-ctrl-transport.h"
 #include "ctrl-cmd.h"
@@ -83,7 +84,7 @@ static int8_t ctrl_cmd_set_access_record(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
-static const struct ctrl_cmd_desc ctrl_cmd_desc[] = {
+static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 	{
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
 		.length  = 0,
@@ -114,26 +115,26 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] = {
 static void on_ctrl_transport_received_msg(
 	struct ctrl_transport *ctrl, const struct ctrl_msg *msg)
 {
-	const struct ctrl_cmd_desc *desc = NULL;
+	struct ctrl_cmd_desc desc;
 	int8_t i, err;
 
-	for (i = 0; i < ARRAY_SIZE(ctrl_cmd_desc); i++)
-		if (ctrl_cmd_desc[i].type == msg->type) {
-			desc = &ctrl_cmd_desc[i];
+	for (i = 0; i < ARRAY_SIZE(ctrl_cmd_desc); i++) {
+		memcpy_P(&desc, &ctrl_cmd_desc[i], sizeof(desc));
+		if (desc.type == msg->type)
 			break;
-		}
+	}
 
-	if (!desc) {
+	if (i >= ARRAY_SIZE(ctrl_cmd_desc)) {
 		err = -ENOENT;
 		goto error;
 	}
 
-	if (msg->length != desc->length) {
+	if (msg->length != desc.length) {
 		err = -EINVAL;
 		goto error;
 	}
 
-	err = desc->handler(ctrl, msg->payload);
+	err = desc.handler(ctrl, msg->payload);
 error:
 	if (err)
 		ctrl_transport_reply(ctrl, CTRL_CMD_ERROR,
