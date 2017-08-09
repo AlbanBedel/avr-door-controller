@@ -14,7 +14,8 @@ struct access_record {
 	uint32_t key;
 	/* Pin or key */
 	uint8_t type   : 2;
-	uint8_t resvd  : 2;
+	uint8_t invalid: 1;
+	uint8_t resvd  : 1;
 	/* Doors that can be opened with this token */
 	uint8_t doors  : 4;
 } PACKED;

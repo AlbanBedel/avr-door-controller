@@ -32,12 +32,21 @@ static int8_t eeprom_find_access_record(uint8_t type, uint32_t key,
 
 	for (i = 0; i < ARRAY_SIZE(config.access); i++) {
 		eeprom_read_block(rec, &config.access[i], sizeof(*rec));
-		if (rec->type == type &&
-		    (type == ACCESS_TYPE_NONE || rec->key == key)) {
-			if (index)
-				*index = i;
-			return 0;
+		switch (type) {
+		case ACCESS_TYPE_NONE:
+			if (rec->invalid || rec->type == ACCESS_TYPE_NONE)
+				break;
+			continue;
+		default:
+			if (!rec->invalid &&
+			    rec->type == type && rec->key == key)
+				break;
+			continue;
 		}
+		/* found */
+		if (index)
+			*index = i;
+		return 0;
 	}
 
 	return -ENOENT;
@@ -76,6 +85,7 @@ int8_t eeprom_set_access(uint8_t type, uint32_t key, uint8_t doors)
 		if (err < 0)
 			return -ENOSPC;
 
+		rec.invalid = 0;
 		rec.type = type;
 		rec.key = key;
 	}
