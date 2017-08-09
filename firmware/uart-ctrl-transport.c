@@ -112,7 +112,7 @@ static void uart_ctrl_transport_on_reply_sent(void *context)
 }
 
 static int8_t uart_ctrl_transport_write_outbuf(struct ctrl_transport *ctrl,
-				     int16_t *crc, uint8_t c)
+				     uint16_t *crc, uint8_t c)
 {
 	uint8_t esc = (c == UART_CTRL_TRANSPORT_START ||
 		       c == UART_CTRL_TRANSPORT_ESC);

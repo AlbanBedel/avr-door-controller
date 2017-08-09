@@ -17,7 +17,7 @@ DEBUG=1
 CPPFLAGS = -MMD				\
 	-I.				\
 
-CFLAGS =-Os				\
+CFLAGS =-Os -Wall			\
 	-std=gnu99			\
 	-fdata-sections			\
 	-ffunction-sections		\

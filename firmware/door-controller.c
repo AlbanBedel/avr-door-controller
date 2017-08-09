@@ -75,6 +75,8 @@ static void door_ctrl_set_state(struct door_ctrl *dc, enum door_state state)
 		timer_deschedule(&dc->idle_timer);
 		event_remove(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT);
 		break;
+	default: /* Kill the warning about the other states */
+		break;
 	}
 #if DEBUG
 	event_add(&dc->wr, DOOR_CTRL_EVENT_STATE_CHANGED,
@@ -123,8 +125,6 @@ static void door_ctrl_open(struct door_ctrl *dc)
 
 static void door_ctrl_reject(struct door_ctrl *dc)
 {
-	uint16_t block_time;
-
 	door_ctrl_set_state(dc, DOOR_CTRL_REJECTED);
 	trigger_start_seq(&dc->buzzer_trigger, buzzer_rejected_seq,
 			  ARRAY_SIZE(buzzer_rejected_seq));

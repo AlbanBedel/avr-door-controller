@@ -66,7 +66,6 @@ static int init_doors(void)
 int main(void)
 {
 	int8_t err;
-	uint8_t i;
 
 	clock_prescale_set(clock_div_1);
 	timers_init();
