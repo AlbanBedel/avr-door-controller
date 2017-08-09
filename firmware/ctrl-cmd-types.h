@@ -38,6 +38,11 @@ struct ctrl_msg {
  */
 #define CTRL_CMD_SET_ACCESS_RECORD	21
 
+/* Input:  struct access_record
+ * Output: none
+ */
+#define CTRL_CMD_SET_ACCESS		22
+
 /* Payload depend on the query */
 #define CTRL_CMD_OK			0
 /* Payload is an error code (int8_t) */

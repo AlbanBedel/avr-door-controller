@@ -84,6 +84,19 @@ static int8_t ctrl_cmd_set_access_record(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
+static int8_t ctrl_cmd_set_access(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct access_record *record = payload;
+	int8_t err;
+
+	err = eeprom_set_access(record->type, record->key, record->doors);
+	if (err)
+		return err;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
 static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 	{
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
@@ -109,6 +122,11 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_SET_ACCESS_RECORD,
 		.length  = sizeof(struct ctrl_cmd_set_access_record),
 		.handler = ctrl_cmd_set_access_record,
+	},
+	{
+		.type    = CTRL_CMD_SET_ACCESS,
+		.length  = sizeof(struct access_record),
+		.handler = ctrl_cmd_set_access,
 	},
 };
 

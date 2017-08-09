@@ -18,10 +18,9 @@
 static int8_t check_key(uint8_t door_id, uint8_t type,
 			uint32_t key, void *context)
 {
-	struct access_record rec;
 	int8_t err;
 
-	err = eeprom_find_access_record(door_id, type, key, &rec);
+	err = eeprom_has_access(type, key, door_id);
 	if (DEBUG) {
 		static char buffer[40];
 		static const char fmt[] PROGMEM =

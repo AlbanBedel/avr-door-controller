@@ -18,8 +18,9 @@ int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec);
 
 int8_t eeprom_set_access_record(uint16_t id, const struct access_record *rec);
 
-int8_t eeprom_find_access_record(uint8_t door_id, uint8_t type,
-				 uint32_t key, struct access_record *rec);
+int8_t eeprom_has_access(uint8_t type, uint32_t key, uint8_t door_id);
+
+int8_t eeprom_set_access(uint8_t type, uint32_t key, uint8_t doors);
 
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg);
 
