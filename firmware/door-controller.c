@@ -191,6 +191,10 @@ static void on_event(uint8_t event, union event_val val, void *context)
 			if (val.u == WIEGAND_KEY_ENTER) {
 				door_ctrl_error(dc);
 				break;
+			} else if (val.u == WIEGAND_KEY_ESC) {
+				/* Ignore ESC for now, we might add an
+				 * entry to a menu here instead */
+				break;
 			}
 			/* The PIN is stored with one key per nibble,
 			 * to allow detecting missing leading zeros we fill
@@ -223,6 +227,8 @@ static void on_event(uint8_t event, union event_val val, void *context)
 			else
 				door_ctrl_reject(dc);
 			dc->pin = 0;
+		} else if (key == WIEGAND_KEY_ESC) {
+			door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
 		} else {
 			dc->pin <<= 4;
 			dc->pin = (dc->pin & ~0xF) | (key & 0xF);
