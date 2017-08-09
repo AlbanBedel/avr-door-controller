@@ -11,9 +11,13 @@
 #define CAT3(a, b, c)		EXPAND(CAT3_(a, b, c))
 #define CAT4(a, b, c, d)	EXPAND(CAT4_(a, b, c, d))
 
+#ifndef BIT
 #define BIT(x) (1 << (x))
+#endif
 
+#ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a)		(sizeof(a) / sizeof(*(a)))
+#endif
 
 #define PACKED			__attribute__((packed))
 
