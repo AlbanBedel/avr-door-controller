@@ -18,15 +18,16 @@
 #define UART_CTRL_TRANSPORT_ESCAPE(x)		UART_CTRL_TRANSPORT_UNESCAPE(x)
 
 struct ctrl_transport {
-	uint8_t state  : 7;
-	uint8_t escape : 1;
+	volatile uint8_t state   : 3;
+	volatile uint8_t escape  : 1;
+	volatile uint8_t sending : 1;
+	volatile uint8_t unused  : 3;
 	uint8_t pos;
 	uint16_t computed_crc;
 	uint16_t msg_crc;
-	union {
-		struct ctrl_msg msg;
-		uint8_t outbuf[1 + sizeof(struct ctrl_msg) * 2];
-	};
+
+	struct ctrl_msg msg;
+	uint8_t outbuf[1 + sizeof(struct ctrl_msg) * 2];
 };
 
 #endif /* UART_CTRL_TRANSPORT_H */

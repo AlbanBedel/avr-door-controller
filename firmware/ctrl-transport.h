@@ -10,7 +10,12 @@ struct ctrl_transport;
 
 int8_t ctrl_transport_init(struct ctrl_transport *ctrl);
 
+/* Send a reply to a command */
 int8_t ctrl_transport_reply(struct ctrl_transport *ctrl, uint8_t type,
 			    const void *payload, uint8_t length);
+
+/* Send an event */
+int8_t ctrl_transport_send_event(struct ctrl_transport *ctrl, uint8_t type,
+				 const void *payload, uint8_t length);
 
 #endif /* CTRL_TRANSPORT_H */

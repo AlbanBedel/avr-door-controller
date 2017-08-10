@@ -6,6 +6,7 @@
 #include "uart-ctrl-transport.h"
 #include "ctrl-cmd.h"
 #include "event-queue.h"
+#include "sleep.h"
 
 #define UART_CTRL_TRANSPORT_SYNC		0
 #define UART_CTRL_TRANSPORT_RECV_TYPE		1
@@ -104,11 +105,14 @@ static void uart_ctrl_transport_on_recv(uint8_t byte, void *context)
 	}
 }
 
-static void uart_ctrl_transport_on_reply_sent(void *context)
+static void uart_ctrl_transport_on_sent(void *context)
 {
 	struct ctrl_transport *ctrl = context;
 
-	ctrl->state = UART_CTRL_TRANSPORT_SYNC;
+	if (ctrl->state == UART_CTRL_TRANSPORT_SEND_REPLY)
+		ctrl->state = UART_CTRL_TRANSPORT_SYNC;
+
+	ctrl->sending = 0;
 }
 
 static int8_t uart_ctrl_transport_write_outbuf(struct ctrl_transport *ctrl,
@@ -133,19 +137,15 @@ static int8_t uart_ctrl_transport_write_outbuf(struct ctrl_transport *ctrl,
 	return 0;
 }
 
-int8_t ctrl_transport_reply(struct ctrl_transport *ctrl, uint8_t type,
-			    const void *payload, uint8_t length)
+static int8_t ctrl_transport_write(
+	struct ctrl_transport *ctrl, uint8_t type,
+	const void *payload, uint8_t length)
 {
-	struct ctrl_msg *msg = &ctrl->msg;
 	uint16_t crc = UART_CTRL_TRANSPORT_CRC_INIT;
 	int8_t err;
 	uint8_t i;
 
-	if (ctrl->state < UART_CTRL_TRANSPORT_WAIT_FOR_REPLY)
-		return -EINVAL;
-	if (ctrl->state > UART_CTRL_TRANSPORT_WAIT_FOR_REPLY)
-		return -EBUSY;
-	if (length > sizeof(msg->payload))
+	if (length > sizeof(ctrl->msg.payload))
 		return -E2BIG;
 
 	/* Initialize the state and write the start byte */
@@ -170,14 +170,48 @@ int8_t ctrl_transport_reply(struct ctrl_transport *ctrl, uint8_t type,
 	}
 
 	/* Then send the whole message */
+	ctrl->sending = 1;
 	err = uart_send(ctrl->outbuf, ctrl->pos,
-			uart_ctrl_transport_on_reply_sent, ctrl);
+			uart_ctrl_transport_on_sent, ctrl);
 	if (err)
-		ctrl->state = UART_CTRL_TRANSPORT_SYNC;
-	else
-		ctrl->state = UART_CTRL_TRANSPORT_SEND_REPLY;
+		ctrl->sending = 0;
 
 	return err;
+}
+
+int8_t ctrl_transport_reply(struct ctrl_transport *ctrl, uint8_t type,
+			    const void *payload, uint8_t length)
+{
+	int8_t err;
+
+	/* Check that we have the correct state */
+	if (ctrl->state != UART_CTRL_TRANSPORT_WAIT_FOR_REPLY)
+		return -EINVAL;
+
+	/* Wait for any message that is beeing sent to be finished */
+	sleep_while(ctrl->sending);
+
+	/* Set the next state */
+	ctrl->state = UART_CTRL_TRANSPORT_SEND_REPLY;
+	/* And write it out */
+	err = ctrl_transport_write(ctrl, type, payload, length);
+	if (err)
+		ctrl->state = UART_CTRL_TRANSPORT_SYNC;
+
+	return err;
+
+}
+
+int8_t ctrl_transport_send_event(struct ctrl_transport *ctrl, uint8_t type,
+				 const void *payload, uint8_t length)
+{
+	/* Only allow sending events */
+	if (type < CTRL_EVENT_BASE || type == CTRL_CMD_ERROR)
+		return -EINVAL;
+
+	/* Wait for any currently sent message to be finished */
+	sleep_while(ctrl->sending);
+	return ctrl_transport_write(ctrl, type, payload, length);
 }
 
 int8_t ctrl_transport_init(struct ctrl_transport *ctrl)

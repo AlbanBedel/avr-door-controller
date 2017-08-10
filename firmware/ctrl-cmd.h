@@ -6,4 +6,6 @@
 
 int8_t ctrl_cmd_init(void);
 
+int8_t ctrl_send_event(uint8_t type, const void *payload, uint8_t length);
+
 #endif /* CTRL_CMD_H */

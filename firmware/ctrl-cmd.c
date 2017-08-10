@@ -201,3 +201,9 @@ int8_t ctrl_cmd_init(void)
 
 	return event_handler_add(&ctrl_transport_handler);
 }
+
+int8_t ctrl_send_event(uint8_t type, const void *payload, uint8_t length)
+{
+	return ctrl_transport_send_event(
+		&ctrl_transport, type, payload, length);
+}

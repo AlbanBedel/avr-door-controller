@@ -54,6 +54,9 @@ struct ctrl_msg {
 /* Payload is an error code (int8_t) */
 #define CTRL_CMD_ERROR			255
 
+/* The base id for all event signaling */
+#define CTRL_EVENT_BASE			127
+
 struct device_descriptor {
 	uint8_t major_version;
 	uint8_t minor_version;
