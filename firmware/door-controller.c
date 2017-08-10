@@ -84,21 +84,21 @@ static void door_ctrl_set_state(struct door_ctrl *dc, enum door_state state)
 #endif
 }
 
-void on_idle_timeout(void *context)
+static void on_idle_timeout(void *context)
 {
 	struct door_ctrl *dc = context;
 
 	event_add(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT, EVENT_VAL(NULL));
 }
 
-void on_open_finished(void *context)
+static void on_open_finished(void *context)
 {
 	struct door_ctrl *dc = context;
 
 	event_add(&dc->wr, DOOR_CTRL_EVENT_OPEN_FINISHED, EVENT_VAL(NULL));
 }
 
-void on_buzzer_finished(void *context)
+static void on_buzzer_finished(void *context)
 {
 	struct door_ctrl *dc = context;
 
