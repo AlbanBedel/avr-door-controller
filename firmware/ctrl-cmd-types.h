@@ -57,6 +57,9 @@ struct ctrl_msg {
 /* The base id for all event signaling */
 #define CTRL_EVENT_BASE			127
 
+/* No payload, just indicate that the system started */
+#define CTRL_EVENT_STARTED		(CTRL_EVENT_BASE + 0)
+
 struct device_descriptor {
 	uint8_t major_version;
 	uint8_t minor_version;

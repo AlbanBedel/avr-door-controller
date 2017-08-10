@@ -75,12 +75,7 @@ int main(void)
 		err = init_doors();
 
 	sei();
-	uart_blocking_write("Door control init ");
-	if (err)
-		uart_blocking_write("failed!\r\n");
-	else
-		uart_blocking_write("OK!\r\n");
-
+	ctrl_send_event(CTRL_EVENT_STARTED, NULL, 0);
 	event_loop_run(GPIO(B, 5));
 
 	return 0;
