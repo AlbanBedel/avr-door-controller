@@ -1,10 +1,10 @@
 #include <stdlib.h>
 #include <errno.h>
-#include <avr/sleep.h>
 #include <util/atomic.h>
 
 #include "event-queue.h"
 #include "utils.h"
+#include "sleep.h"
 #include "timer.h"
 #include "gpio.h"
 
@@ -23,6 +23,8 @@ static struct event * volatile events_tail;
 static struct event events_storage[MAX_PENDING_EVENTS];
 
 static struct event_handler * volatile handlers;
+
+static uint8_t life_gpio;
 
 int8_t event_handler_add(struct event_handler *hdlr)
 {
@@ -163,24 +165,26 @@ static void event_loop_run_once(void)
 	}
 }
 
-void event_loop_run(uint8_t life_gpio)
+void _sleep_prepare(void)
 {
+	timers_sleep();
+	gpio_set_value(life_gpio, 0);
+}
+
+void _sleep_finish(void)
+{
+	gpio_set_value(life_gpio, 1);
+	timers_wakeup();
+}
+
+void event_loop_run(uint8_t gpio)
+{
+	life_gpio = gpio;
 	gpio_direction_output(life_gpio, 1);
 	while (1) {
 		event_loop_run_once();
 		/* Sleep if no event is pending */
-		cli();
-		if (!events) {
-			timers_sleep();
-			gpio_set_value(life_gpio, 0);
-			sleep_enable();
-			sei();
-			sleep_cpu();
-			sleep_disable();
-			gpio_set_value(life_gpio, 1);
-			timers_wakeup();
-		}
-		sei();
+		sleep_if(!events);
 	}
 	gpio_set_value(life_gpio, 0);
 }

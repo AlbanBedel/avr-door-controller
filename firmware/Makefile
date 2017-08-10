@@ -46,6 +46,7 @@ avr-door-controller.elf_DEPS :=		\
 	external-irq.o			\
 	gpio.o				\
 	main.o				\
+	sleep.o				\
 	timer.o				\
 	trigger.o			\
 	uart.o				\
