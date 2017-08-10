@@ -14,6 +14,7 @@
 #include "uart.h"
 #include "ctrl-cmd.h"
 #include "gpio.h"
+#include "sleep.h"
 
 static int8_t check_key(uint8_t door_id, uint8_t type,
 			uint32_t key, void *context)
@@ -73,6 +74,12 @@ int main(void)
 	err = ctrl_cmd_init();
 	if (!err)
 		err = init_doors();
+
+	/* On error turn on the life LED and sleep forwever */
+	if (err) {
+		gpio_direction_output(GPIO(B, 5), 1);
+		sleep_while(1);
+	}
 
 	sei();
 	ctrl_send_event(CTRL_EVENT_STARTED, NULL, 0);
