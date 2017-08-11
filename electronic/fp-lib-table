@@ -1,0 +1,4 @@
+(fp_lib_table
+  (lib (name Modules)(type KiCad)(uri ${KIPRJMOD}/Modules.pretty)(options "")(descr ""))
+  (lib (name PPTC)(type KiCad)(uri ${KIPRJMOD}/PPTC.pretty)(options "")(descr ""))
+)
