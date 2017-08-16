@@ -21,7 +21,7 @@ static inline void set_bit(uint8_t *data, uint8_t idx, uint8_t val)
 		data[idx >> 3] &= ~(1 << (idx & 7));
 }
 
-static uint8_t odd_parity(uint8_t *data, uint8_t from, uint8_t to)
+static uint8_t even_parity(uint8_t *data, uint8_t from, uint8_t to)
 {
 	uint8_t p;
 
@@ -31,9 +31,9 @@ static uint8_t odd_parity(uint8_t *data, uint8_t from, uint8_t to)
 	return p & 1;
 }
 
-static uint8_t even_parity(uint8_t *data, uint8_t from, uint8_t to)
+static uint8_t odd_parity(uint8_t *data, uint8_t from, uint8_t to)
 {
-	return !odd_parity(data, from, to);
+	return !even_parity(data, from, to);
 }
 
 static void wiegand_reader_event(struct wiegand_reader *wr,
@@ -78,11 +78,11 @@ static int8_t wiegand_reader_process_26bits_code(struct wiegand_reader *wr)
 	uint8_t i;
 
 	/* Check the parity */
-	parity = even_parity(wr->bits, 1, 8);
+	parity = even_parity(wr->bits, 1, 12);
 	if (parity != get_bit(wr->bits, 0))
 		return -EINVAL;
 
-	parity = odd_parity(wr->bits, 9, 24);
+	parity = odd_parity(wr->bits, 13, 24);
 	if (parity != get_bit(wr->bits, 25))
 		return -EINVAL;
 
