@@ -26,12 +26,11 @@
 #include "avr-door-controller-daemon.h"
 
 /* Message decoder state */
-#define AVR_DOOR_CTRL_INIT			0
-#define AVR_DOOR_CTRL_SYNC			1
-#define AVR_DOOR_CTRL_RECV_TYPE			2
-#define AVR_DOOR_CTRL_RECV_LENGTH		3
-#define AVR_DOOR_CTRL_RECV_PAYLOAD		4
-#define AVR_DOOR_CTRL_RECV_CRC			5
+#define AVR_DOOR_CTRL_SYNC			0
+#define AVR_DOOR_CTRL_RECV_TYPE			1
+#define AVR_DOOR_CTRL_RECV_LENGTH		2
+#define AVR_DOOR_CTRL_RECV_PAYLOAD		3
+#define AVR_DOOR_CTRL_RECV_CRC			4
 
 #define UART_CTRL_START				0x7E
 #define UART_CTRL_ESC				0x7D
@@ -124,14 +123,7 @@ static int uart_ctrl_transport_recv_byte(
 	struct avr_door_ctrl_uart_transport *uart,
 	uint8_t byte, struct avr_door_ctrl_msg *msg)
 {
-
-	/* During init just wait for the welcome message */
-	if (uart->recv_state == AVR_DOOR_CTRL_INIT) {
-		if (byte == '\n')
-			uart->recv_state = AVR_DOOR_CTRL_SYNC;
-		return -ENODATA;
-	}
-
+	/* Handle start bytes */
 	if (byte == UART_CTRL_START) {
 		/* Warn the upper layer if there was a transport error */
 		int err = uart->recv_state == AVR_DOOR_CTRL_SYNC ?
