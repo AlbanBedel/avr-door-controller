@@ -22,6 +22,7 @@ static int8_t ctrl_cmd_get_device_descriptor(
 		.minor_version = 1,
 		.num_doors = NUM_DOORS,
 		.num_access_records = NUM_ACCESS_RECORDS,
+		.free_access_records = eeprom_get_free_access_record_count(),
 	};
 
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK,

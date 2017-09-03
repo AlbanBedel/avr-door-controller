@@ -6,6 +6,20 @@
 
 static struct eeprom_config config EEMEM;
 
+uint16_t eeprom_get_free_access_record_count(void)
+{
+	struct access_record rec;
+	uint16_t i, count = 0;
+
+	for (i = 0; i < ARRAY_SIZE(config.access); i++) {
+		eeprom_read_block(&rec, &config.access[i], sizeof(rec));
+		if (rec.invalid || rec.type == ACCESS_TYPE_NONE)
+			count++;
+	}
+
+	return count;
+}
+
 int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec)
 {
 	if (id >= ARRAY_SIZE(config.access))

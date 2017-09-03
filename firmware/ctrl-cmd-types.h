@@ -71,6 +71,7 @@ struct device_descriptor {
 
 	uint8_t num_doors;
 	uint16_t num_access_records;
+	uint16_t free_access_records;
 } PACKED;
 
 struct ctrl_cmd_get_door_config {

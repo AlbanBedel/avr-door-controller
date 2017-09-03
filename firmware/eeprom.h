@@ -14,6 +14,8 @@ struct eeprom_config {
 	struct access_record access[NUM_ACCESS_RECORDS];
 };
 
+uint16_t eeprom_get_free_access_record_count(void);
+
 int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec);
 
 int8_t eeprom_set_access_record(uint16_t id, const struct access_record *rec);
