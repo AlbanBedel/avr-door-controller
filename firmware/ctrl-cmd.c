@@ -97,6 +97,20 @@ static int8_t ctrl_cmd_set_access(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
+static int8_t ctrl_cmd_get_access(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct access_record *record = payload;
+	uint8_t doors;
+	int8_t err;
+
+	err = eeprom_get_access(record->type, record->key, &doors);
+	if (err)
+		doors = 0;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &doors, sizeof(doors));
+}
+
 static int8_t ctrl_cmd_remove_all_access(
 	struct ctrl_transport *ctrl, const void *payload)
 {
@@ -135,6 +149,11 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_SET_ACCESS,
 		.length  = sizeof(struct access_record),
 		.handler = ctrl_cmd_set_access,
+	},
+	{
+		.type    = CTRL_CMD_GET_ACCESS,
+		.length  = sizeof(struct access_record),
+		.handler = ctrl_cmd_get_access,
 	},
 	{
 		.type    = CTRL_CMD_REMOVE_ALL_ACCESS,

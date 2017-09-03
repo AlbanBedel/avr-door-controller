@@ -48,6 +48,11 @@ struct ctrl_msg {
  */
 #define CTRL_CMD_REMOVE_ALL_ACCESS	23
 
+/* Input:  struct access_record
+ * Output: uint8_t (doors mask)
+ */
+#define CTRL_CMD_GET_ACCESS		24
+
 
 /* Payload depend on the query */
 #define CTRL_CMD_OK			0

@@ -52,7 +52,7 @@ static int8_t eeprom_find_access_record(uint8_t type, uint32_t key,
 	return -ENOENT;
 }
 
-int8_t eeprom_has_access(uint8_t type, uint32_t key, uint8_t door_id)
+int8_t eeprom_get_access(uint8_t type, uint32_t key, uint8_t *doors)
 {
 	struct access_record rec;
 	int8_t err;
@@ -61,7 +61,22 @@ int8_t eeprom_has_access(uint8_t type, uint32_t key, uint8_t door_id)
 	if (err < 0)
 		return err;
 
-	return (rec.doors & BIT(door_id)) ? 0 : -EPERM;
+	if (doors)
+		*doors = rec.doors;
+
+	return 0;
+}
+
+int8_t eeprom_has_access(uint8_t type, uint32_t key, uint8_t door_id)
+{
+	uint8_t doors;
+	int8_t err;
+
+	err = eeprom_get_access(type, key, &doors);
+	if (err < 0)
+		return err;
+
+	return (doors & BIT(door_id)) ? 0 : -EPERM;
 }
 
 int8_t eeprom_set_access(uint8_t type, uint32_t key, uint8_t doors)
