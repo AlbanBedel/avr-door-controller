@@ -1,9 +1,9 @@
 (kicad_pcb (version 4) (host pcbnew 4.0.2+dfsg1-stable)
 
   (general
-    (links 132)
-    (no_connects 3)
-    (area 91.949999 55.949999 202.050001 112.050001)
+    (links 131)
+    (no_connects 0)
+    (area 76.75812 51.342879 218.949561 123.200001)
     (thickness 1.6)
     (drawings 63)
     (tracks 385)
@@ -242,7 +242,6 @@
     (add_net "Net-(P3-Pad1)")
     (add_net "Net-(P6-Pad2)")
     (add_net "Net-(P6-Pad3)")
-    (add_net "Net-(P6-Pad5)")
     (add_net "Net-(P7-Pad1)")
     (add_net "Net-(Q1-Pad1)")
     (add_net "Net-(Q1-Pad2)")
@@ -665,7 +664,7 @@
     )
   )
 
-  (module Connect:USB_A (layer F.Cu) (tedit 598DE14B) (tstamp 58EEADFB)
+  (module Connect:USB_A (layer F.Cu) (tedit 59AC7BC3) (tstamp 58EEADFB)
     (at 150.11486 64.76788 180)
     (descr "USB A connector")
     (tags "USB USB_A")
@@ -692,8 +691,8 @@
       (net 61 "Net-(P6-Pad2)"))
     (pad 1 thru_hole circle (at 0.00086 -0.00212 90) (size 1.50114 1.50114) (drill 1.00076) (layers *.Cu *.Mask F.SilkS)
       (net 31 "Net-(F5-Pad2)"))
-    (pad "" np_thru_hole circle (at 10.16086 2.66488 90) (size 2.99974 2.99974) (drill 2.30124) (layers *.Cu *.Mask F.SilkS))
-    (pad "" np_thru_hole circle (at -3.55514 2.66488 90) (size 2.99974 2.99974) (drill 2.30124) (layers *.Cu *.Mask F.SilkS))
+    (pad 5 thru_hole circle (at 10.16086 2.66488 90) (size 2.99974 2.99974) (drill 2.30124) (layers *.Cu *.Mask F.SilkS))
+    (pad 5 thru_hole circle (at -3.55514 2.66488 90) (size 2.99974 2.99974) (drill 2.30124) (layers *.Cu *.Mask F.SilkS))
     (model Connect.3dshapes/USB_A.wrl
       (at (xyz 0.14 0 0))
       (scale (xyz 1 1 1))
