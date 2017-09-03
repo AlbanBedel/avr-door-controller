@@ -1,0 +1,12 @@
+.built
+.configured_*
+.prepared
+.quilt_checked
+.source_dir
+CMakeCache.txt
+CMakeFiles/
+Makefile
+avr-door-controller-daemon
+cmake_install.cmake
+install_manifest.txt
+ipkg-*/
