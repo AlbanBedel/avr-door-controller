@@ -13,3 +13,13 @@ TARGET_LINK_LIBRARIES(avr-door-controller-daemon ubus ubox)
 INSTALL(TARGETS avr-door-controller-daemon
         RUNTIME DESTINATION bin
 )
+
+INSTALL(PROGRAMS avr-door-controller-daemon.rc
+	DESTINATION /etc/init.d
+	RENAME avr-door-controller-daemon
+)
+
+INSTALL(FILES avr-door-controller-daemon.acl
+	DESTINATION /usr/share/rpcd/acl.d
+	RENAME avr-door-controller-daemon.json
+)

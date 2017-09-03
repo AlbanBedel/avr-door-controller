@@ -1,0 +1,25 @@
+{
+	"doors": {
+		"description": "Door Access Controller",
+		"read": {
+			"ubus": {
+				"doors.*": [
+					"get_device_descriptor",
+					"get_door_config",
+					"get_access_record",
+					"get_access"
+				]
+			}
+		},
+		"write": {
+			"ubus": {
+				"doors.*": [
+					"set_door_config",
+					"set_access_record",
+					"set_access",
+					"remove_all_access"
+				]
+			}
+		}
+	}
+}
