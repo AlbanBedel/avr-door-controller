@@ -1,0 +1,7 @@
+*-rescue.lib
+*.bak
+*.bck
+*.cmp
+*.kicad_pcb-bak
+*.net
+*.xml
