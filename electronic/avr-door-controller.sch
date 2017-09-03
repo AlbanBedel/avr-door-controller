@@ -36,8 +36,8 @@ $Descr A4 11693 8268
 encoding utf-8
 Sheet 1 1
 Title "AVR Door Controller"
-Date "2017-08-11"
-Rev "0"
+Date "2017-09-03"
+Rev "1"
 Comp ""
 Comment1 ""
 Comment2 ""

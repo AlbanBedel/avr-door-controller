@@ -15,8 +15,8 @@
   (page A4)
   (title_block
     (title "AVR Door Controller")
-    (date 2017-08-11)
-    (rev 0)
+    (date 2017-09-03)
+    (rev 1)
   )
 
   (layers
