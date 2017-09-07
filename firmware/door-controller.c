@@ -275,17 +275,17 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 		return err;
 
 	err = trigger_init(&dc->open_trigger, cfg->open_gpio,
-			   cfg->open_low_active, on_open_finished, dc);
+			   on_open_finished, dc);
 	if (err)
 		return err;
 
 	err = trigger_init(&dc->led_trigger, cfg->led_gpio,
-			   cfg->led_low_active, NULL, NULL);
+			   NULL, NULL);
 	if (err)
 		return err;
 
 	err = trigger_init(&dc->buzzer_trigger, cfg->buzzer_gpio,
-			   cfg->buzzer_low_active, on_buzzer_finished, dc);
+			   on_buzzer_finished, dc);
 	if (err)
 		return err;
 

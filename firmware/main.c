@@ -77,13 +77,13 @@ int main(void)
 
 	/* On error turn on the life LED and sleep forwever */
 	if (err) {
-		gpio_direction_output(GPIO(B, 5), 1);
+		gpio_direction_output(GPIO(B, 5, HIGH_ACTIVE), 1);
 		sleep_while(1);
 	}
 
 	sei();
 	ctrl_send_event(CTRL_EVENT_STARTED, NULL, 0);
-	event_loop_run(GPIO(B, 5));
+	event_loop_run(GPIO(B, 5, HIGH_ACTIVE));
 
 	return 0;
 }

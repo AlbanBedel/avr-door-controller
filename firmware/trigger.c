@@ -19,8 +19,7 @@ static void trigger_on_timeout(void *context)
 
 	/* Play the next step */
 	if (tr->gpio)
-		gpio_set_value(tr->gpio,
-			       (!tr->low_active) ^ (tr->seq_pos & 1));
+		gpio_set_value(tr->gpio, !(tr->seq_pos & 1));
 	timer_schedule_in(&tr->timer, tr->seq[tr->seq_pos]);
 	tr->seq_pos++;
 }
@@ -49,13 +48,13 @@ void trigger_start(struct trigger *tr, uint16_t duration)
 void trigger_stop(struct trigger *tr)
 {
 	if (tr->gpio)
-		gpio_set_value(tr->gpio, tr->low_active);
+		gpio_set_value(tr->gpio, 0);
 	tr->seq = NULL;
 	tr->seq_len = 0;
 	tr->seq_pos = 0;
 }
 
-int8_t trigger_init(struct trigger *tr, uint8_t gpio, uint8_t low_active,
+int8_t trigger_init(struct trigger *tr, uint8_t gpio,
 		    timer_cb_t on_finished, void *on_finished_context)
 {
 	if (!tr || (gpio && !gpio_is_valid(gpio)))
@@ -63,13 +62,12 @@ int8_t trigger_init(struct trigger *tr, uint8_t gpio, uint8_t low_active,
 
 	memset(tr, 0, sizeof(*tr));
 	tr->gpio = gpio;
-	tr->low_active = low_active;
 	tr->on_finished = on_finished;
 	tr->on_finished_context = on_finished_context;
 
 	timer_init(&tr->timer, trigger_on_timeout, tr);
 
 	if (gpio)
-		return gpio_direction_output(gpio, low_active);
+		return gpio_direction_output(gpio, 0);
 	return 0;
 }

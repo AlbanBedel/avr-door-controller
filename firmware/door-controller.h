@@ -27,9 +27,6 @@ struct door_ctrl_config {
 	uint8_t led_gpio;
 	uint8_t buzzer_gpio;
 
-	uint8_t open_low_active: 1;
-	uint8_t led_low_active : 1;
-	uint8_t buzzer_low_active : 1;
 
 	door_ctrl_check check_key;
 	void *check_context;

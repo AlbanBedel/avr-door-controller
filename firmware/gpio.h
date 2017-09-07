@@ -30,13 +30,22 @@
 #define GPIO_PORT_F		6
 /**@}*/
 
+/** \defgroup GPIOPolarity GPIO Polarity
+ * @{
+ */
+#define GPIO_HIGH_ACTIVE	0
+#define GPIO_LOW_ACTIVE		1
+/**@}*/
+
 /** Generate a GPIO ID from port and pin number
  *
  * \param port GPIO port, one of \ref GPIOPort
  * \param pin Pin number
+ * \param pol Pin polarity
  * \return The GPIO ID
  */
-#define GPIO_ID(port, pin)	(((port) & 0x1F) << 3 | ((pin) & 0x7))
+#define GPIO_ID(port, pin, pol) \
+	((((pol) & 1) << 7) | (((port) & 0xF) << 3) | ((pin) & 0x7))
 
 /** Generate a GPIO ID from a port name and pin number
  *
@@ -47,14 +56,15 @@
  * This is a convenience macro to make GPIO definitions nicer when
  * the port is a compile time constant.
  */
-#define GPIO(port, pin)		GPIO_ID(GPIO_PORT_##port, pin)
+#define GPIO(port, pin, pol) \
+	GPIO_ID(GPIO_PORT_##port, pin, GPIO_##pol)
 
 /** Get the port from a GPIO ID
  *
  * \param gpio GPIO ID
  * \return Port, one of \ref GPIOPort
  */
-#define GPIO_PORT(gpio)		(((gpio) >> 3) & 0x1F)
+#define GPIO_PORT(gpio)		(((gpio) >> 3) & 0xF)
 
 /** Get the pin from a GPIO ID
  *
@@ -62,6 +72,13 @@
  * \return Pin number
  */
 #define GPIO_PIN(gpio)		((gpio) & 0x7)
+
+/** Get the polarity from a GPIO ID
+ *
+ * \param gpio GPIO ID
+ * \return GPIO polarity
+ */
+#define GPIO_POLARITY(gpio)	(((gpio) >> 7) & 1)
 
 /** Check if a GPIO is valid
  *

@@ -2,5 +2,5 @@
 #define EEPROM_SIZE		512
 
 /* UART */
-#define UART_RX_GPIO		GPIO(D, 0)
-#define UART_TX_GPIO		GPIO(D, 1)
+#define UART_RX_GPIO		GPIO(D, 0, HIGH_ACTIVE)
+#define UART_TX_GPIO		GPIO(D, 1, HIGH_ACTIVE)

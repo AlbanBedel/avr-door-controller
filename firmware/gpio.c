@@ -104,7 +104,7 @@ int8_t gpio_direction_output(uint8_t gpio, uint8_t val)
 		return -1;
 
 	mask = 1 << GPIO_PIN(gpio);
-	if (val)
+	if ((!!val) ^ GPIO_POLARITY(gpio))
 		regs->port |= mask;
 	else
 		regs->port &= ~mask;
@@ -121,7 +121,7 @@ int8_t gpio_get_value(uint8_t gpio)
 	if (regs == NULL)
 		return -1;
 
-	return (regs->pin >> GPIO_PIN(gpio)) & 1;
+	return ((regs->pin >> GPIO_PIN(gpio)) & 1) ^ GPIO_POLARITY(gpio);
 }
 
 void gpio_set_value(uint8_t gpio, uint8_t state)
@@ -132,7 +132,7 @@ void gpio_set_value(uint8_t gpio, uint8_t state)
 	if (regs == NULL)
 		return;
 
-	if (state)
+	if ((!!state) ^ GPIO_POLARITY(gpio))
 		regs->port |= 1 << GPIO_PIN(gpio);
 	else
 		regs->port &= ~(1 << GPIO_PIN(gpio));
@@ -149,7 +149,7 @@ int8_t gpio_open_collector(uint8_t gpio, uint8_t val)
 
 	mask = 1 << GPIO_PIN(gpio);
 	regs->port &= ~mask;
-	if (val)
+	if ((!!val) ^ GPIO_POLARITY(gpio))
 		regs->ddr &= ~mask;
 	else
 		regs->ddr |= mask;
@@ -165,7 +165,7 @@ void gpio_open_collector_set_value(uint8_t gpio, uint8_t state)
 	if (regs == NULL)
 		return;
 
-	if (state)
+	if ((!!state) ^ GPIO_POLARITY(gpio))
 		regs->ddr &= ~(1 << GPIO_PIN(gpio));
 	else
 		regs->ddr |= 1 << GPIO_PIN(gpio);

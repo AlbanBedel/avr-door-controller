@@ -6,7 +6,6 @@
 
 struct trigger {
 	uint8_t gpio;
-	uint8_t low_active : 1;
 
 	struct timer timer;
 
@@ -19,7 +18,7 @@ struct trigger {
 	void *on_finished_context;
 };
 
-int8_t trigger_init(struct trigger *tr, uint8_t gpio, uint8_t low_active,
+int8_t trigger_init(struct trigger *tr, uint8_t gpio,
 		    timer_cb_t on_finished, void *context);
 
 void trigger_start(struct trigger *tr, uint16_t duration);
