@@ -60,7 +60,6 @@ struct door_ctrl {
 
 	struct trigger led_trigger;
 	struct trigger buzzer_trigger;
-	uint8_t buzzer_count;
 
 	struct timer idle_timer;
 
