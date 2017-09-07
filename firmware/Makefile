@@ -40,6 +40,7 @@ endif
 avr-door-controller.elf_DEPS :=		\
 	$(MCU_O)			\
 	$(BOARD_O)			\
+	ctrl-cmd.o			\
 	door-controller.o		\
 	eeprom.o			\
 	event-queue.o			\
@@ -51,7 +52,6 @@ avr-door-controller.elf_DEPS :=		\
 	trigger.o			\
 	uart.o				\
 	uart-ctrl-transport.o		\
-	ctrl-cmd.o			\
 	wiegand-reader.o		\
 
 avr-door-controller.flash.ihex_DEPS :=	\
