@@ -1326,6 +1326,73 @@ F 3 "" H 2750 6950 50  0000 C CNN
 	1    2750 6950
 	0    1    1    0   
 $EndComp
+$Comp
+L +24V #PWR36
+U 1 1 58F223E9
+P 11000 4750
+F 0 "#PWR36" H 11000 4600 50  0001 C CNN
+F 1 "+24V" H 11000 4890 50  0000 C CNN
+F 2 "" H 11000 4750 50  0000 C CNN
+F 3 "" H 11000 4750 50  0000 C CNN
+	1    11000 4750
+	1    0    0    -1  
+$EndComp
+$Comp
+L Q_NMOS_GDS Q9
+U 1 1 59851E9F
+P 2400 7050
+F 0 "Q9" V 2650 7100 50  0000 R CNN
+F 1 "Q_NMOS_GDS" H 3050 7000 50  0001 R CNN
+F 2 "TO_SOT_Packages_THT:TO-251AA" H 2600 7150 50  0001 C CNN
+F 3 "" H 2400 7050 50  0000 C CNN
+F 4 "942-IRFU7546PBF" V 2400 7050 60  0001 C CNN "Mouser Part No"
+	1    2400 7050
+	0    -1   1    0   
+$EndComp
+$Comp
+L R R19
+U 1 1 59AC84E4
+P 3850 3200
+F 0 "R19" V 3930 3200 50  0000 C CNN
+F 1 "15K" V 3850 3200 50  0000 C CNN
+F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 3780 3200 50  0001 C CNN
+F 3 "" H 3850 3200 50  0000 C CNN
+	1    3850 3200
+	0    1    1    0   
+$EndComp
+$Comp
+L R R20
+U 1 1 59AC9B85
+P 3850 3600
+F 0 "R20" V 3930 3600 50  0000 C CNN
+F 1 "15K" V 3850 3600 50  0000 C CNN
+F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 3780 3600 50  0001 C CNN
+F 3 "" H 3850 3600 50  0000 C CNN
+	1    3850 3600
+	0    -1   -1   0   
+$EndComp
+$Comp
+L R R22
+U 1 1 59ACF2FA
+P 7950 3600
+F 0 "R22" V 8030 3600 50  0000 C CNN
+F 1 "15K" V 7950 3600 50  0000 C CNN
+F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 7880 3600 50  0001 C CNN
+F 3 "" H 7950 3600 50  0000 C CNN
+	1    7950 3600
+	0    1    1    0   
+$EndComp
+$Comp
+L R R21
+U 1 1 59ACF94A
+P 7950 3200
+F 0 "R21" V 8030 3200 50  0000 C CNN
+F 1 "15K" V 7950 3200 50  0000 C CNN
+F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 7880 3200 50  0001 C CNN
+F 3 "" H 7950 3200 50  0000 C CNN
+	1    7950 3200
+	0    1    1    0   
+$EndComp
 Wire Wire Line
 	7250 2800 6525 2800
 Wire Wire Line
@@ -1694,51 +1761,6 @@ Wire Wire Line
 Wire Wire Line
 	1900 6450 3050 6450
 Connection ~ 2400 6450
-$Comp
-L +24V #PWR36
-U 1 1 58F223E9
-P 11000 4750
-F 0 "#PWR36" H 11000 4600 50  0001 C CNN
-F 1 "+24V" H 11000 4890 50  0000 C CNN
-F 2 "" H 11000 4750 50  0000 C CNN
-F 3 "" H 11000 4750 50  0000 C CNN
-	1    11000 4750
-	1    0    0    -1  
-$EndComp
-$Comp
-L Q_NMOS_GDS Q9
-U 1 1 59851E9F
-P 2400 7050
-F 0 "Q9" V 2650 7100 50  0000 R CNN
-F 1 "Q_NMOS_GDS" H 3050 7000 50  0001 R CNN
-F 2 "TO_SOT_Packages_THT:TO-251AA" H 2600 7150 50  0001 C CNN
-F 3 "" H 2400 7050 50  0000 C CNN
-F 4 "942-IRFU7546PBF" V 2400 7050 60  0001 C CNN "Mouser Part No"
-	1    2400 7050
-	0    -1   1    0   
-$EndComp
-$Comp
-L R R19
-U 1 1 59AC84E4
-P 3850 3200
-F 0 "R19" V 3930 3200 50  0000 C CNN
-F 1 "15K" V 3850 3200 50  0000 C CNN
-F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 3780 3200 50  0001 C CNN
-F 3 "" H 3850 3200 50  0000 C CNN
-	1    3850 3200
-	0    1    1    0   
-$EndComp
-$Comp
-L R R20
-U 1 1 59AC9B85
-P 3850 3600
-F 0 "R20" V 3930 3600 50  0000 C CNN
-F 1 "15K" V 3850 3600 50  0000 C CNN
-F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 3780 3600 50  0001 C CNN
-F 3 "" H 3850 3600 50  0000 C CNN
-	1    3850 3600
-	0    -1   -1   0   
-$EndComp
 Wire Wire Line
 	3600 3200 3700 3200
 Wire Wire Line
@@ -1749,28 +1771,6 @@ Wire Wire Line
 Connection ~ 4000 3400
 Wire Wire Line
 	3600 3600 3700 3600
-$Comp
-L R R22
-U 1 1 59ACF2FA
-P 7950 3600
-F 0 "R22" V 8030 3600 50  0000 C CNN
-F 1 "15K" V 7950 3600 50  0000 C CNN
-F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 7880 3600 50  0001 C CNN
-F 3 "" H 7950 3600 50  0000 C CNN
-	1    7950 3600
-	0    1    1    0   
-$EndComp
-$Comp
-L R R21
-U 1 1 59ACF94A
-P 7950 3200
-F 0 "R21" V 8030 3200 50  0000 C CNN
-F 1 "15K" V 7950 3200 50  0000 C CNN
-F 2 "Resistors_ThroughHole:Resistor_Horizontal_RM10mm" V 7880 3200 50  0001 C CNN
-F 3 "" H 7950 3200 50  0000 C CNN
-	1    7950 3200
-	0    1    1    0   
-$EndComp
 Wire Wire Line
 	8200 3200 8100 3200
 Wire Wire Line
@@ -1785,4 +1785,6 @@ Connection ~ 8300 1100
 Connection ~ 8300 1900
 Connection ~ 3400 1100
 Connection ~ 3400 1900
+Wire Wire Line
+	3400 6150 3050 6150
 $EndSCHEMATC
