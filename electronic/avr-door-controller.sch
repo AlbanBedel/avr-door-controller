@@ -267,7 +267,7 @@ NoConn ~ 7250 1400
 NoConn ~ 7250 1500
 NoConn ~ 4700 1800
 NoConn ~ 4700 2600
-NoConn ~ 7250 2300
+NoConn ~ 4700 2800
 NoConn ~ 4700 2700
 $Comp
 L GND #PWR5
@@ -582,7 +582,7 @@ F 5 "1N5231B" H 1650 2100 60  0001 C CNN "Part"
 	1    0    0    1   
 $EndComp
 Text Label 1850 1900 2    60   ~ 0
-D13
+D7
 $Comp
 L GND #PWR3
 U 1 1 58EF2AB1
