@@ -7,6 +7,7 @@
 #include "trigger.h"
 #include "timer.h"
 #include "eeprom.h"
+#include "button.h"
 
 #define DOOR_CTRL_CARD		ACCESS_TYPE_CARD
 #define DOOR_CTRL_PIN		ACCESS_TYPE_PIN
@@ -27,6 +28,11 @@ struct door_ctrl_config {
 	uint8_t led_gpio;
 	uint8_t buzzer_gpio;
 
+	uint8_t status_gpio;
+	uint8_t open_btn_gpio;
+
+	uint8_t status_pull : 1;
+	uint8_t open_btn_pull : 1;
 
 	door_ctrl_check check_key;
 	void *check_context;
@@ -56,6 +62,7 @@ struct door_ctrl {
 	uint32_t pin;
 
 	uint16_t open_time;
+	uint8_t open_status;
 	struct trigger open_trigger;
 
 	struct trigger led_trigger;
@@ -65,6 +72,9 @@ struct door_ctrl {
 
 	door_ctrl_check check_key;
 	void *check_context;
+
+	struct button status;
+	struct button open_btn;
 };
 
 int8_t door_ctrl_init(struct door_ctrl *dc,

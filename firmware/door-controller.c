@@ -7,8 +7,13 @@
 #include "utils.h"
 #include "door-controller.h"
 
+#define BUTTON_DEBOUNCE_DELAY		100
+
 #define IDLE_TIMEOUT			10000
 #define BUZZER_ERROR_DURATION		400
+
+#define DOOR_OPEN_FROM_READER		0
+#define DOOR_OPEN_FROM_BUTTON		1
 
 static const uint16_t buzzer_rejected_seq[] = {
 	0, 200, 600, 200, 600, 200, 600
@@ -91,13 +96,6 @@ static void on_idle_timeout(void *context)
 	event_add(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT, EVENT_VAL(NULL));
 }
 
-static void on_open_finished(void *context)
-{
-	struct door_ctrl *dc = context;
-
-	event_add(&dc->wr, DOOR_CTRL_EVENT_OPEN_FINISHED, EVENT_VAL(NULL));
-}
-
 static void on_buzzer_finished(void *context)
 {
 	struct door_ctrl *dc = context;
@@ -114,11 +112,33 @@ static int8_t door_ctrl_check_key(struct door_ctrl *dc,
 	return dc->check_key(dc->door_id, type, key, dc->check_context);
 }
 
+static void door_ctrl_set_open(struct door_ctrl *dc, uint8_t source,
+			       uint8_t status)
+{
+	uint8_t old_status = dc->open_status;
+
+	if (status)
+		dc->open_status |= BIT(source);
+	else
+		dc->open_status &= ~BIT(source);
+
+	if (!old_status == !dc->open_status)
+		return;
+
+	if (dc->open_status) {
+		trigger_set(&dc->open_trigger, 1);
+		trigger_set(&dc->led_trigger, 1);
+	} else {
+		trigger_start(&dc->open_trigger, dc->open_time);
+		trigger_start(&dc->led_trigger, dc->open_time);
+	}
+}
+
 static void door_ctrl_open(struct door_ctrl *dc)
 {
 	door_ctrl_set_state(dc, DOOR_CTRL_OPENING);
-	trigger_start(&dc->open_trigger, dc->open_time);
-	trigger_start(&dc->led_trigger, dc->open_time);
+	door_ctrl_set_open(dc, DOOR_OPEN_FROM_READER, 1);
+	door_ctrl_set_open(dc, DOOR_OPEN_FROM_READER, 0);
 	trigger_start_seq(&dc->buzzer_trigger, buzzer_accepted_seq,
 		      ARRAY_SIZE(buzzer_accepted_seq));
 }
@@ -163,10 +183,6 @@ static void on_event(uint8_t event, union event_val val, void *context)
 		door_ctrl_show_state(dc, val.u);
 		return;
 	case DOOR_CTRL_EVENT_BUZZER_FINISHED:
-		if (dc->state != DOOR_CTRL_OPENING)
-			door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
-		return;
-	case DOOR_CTRL_EVENT_OPEN_FINISHED:
 		door_ctrl_set_state(dc, DOOR_CTRL_IDLE);
 		return;
 	case DOOR_CTRL_EVENT_IDLE_TIMEOUT:
@@ -244,6 +260,18 @@ static void on_event(uint8_t event, union event_val val, void *context)
 	}
 }
 
+static void on_door_status_changed(uint8_t state, void *context)
+{
+	// TODO: Send an event
+}
+
+static void on_open_button_changed(uint8_t state, void *context)
+{
+	struct door_ctrl *dc = context;
+
+	door_ctrl_set_open(dc, DOOR_OPEN_FROM_BUTTON, state);
+}
+
 // TODO: Move config to program space
 int8_t door_ctrl_init(struct door_ctrl *dc,
 		      const struct door_ctrl_config *cfg)
@@ -275,7 +303,7 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 		return err;
 
 	err = trigger_init(&dc->open_trigger, cfg->open_gpio,
-			   on_open_finished, dc);
+			   NULL, NULL);
 	if (err)
 		return err;
 
@@ -288,6 +316,22 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 			   on_buzzer_finished, dc);
 	if (err)
 		return err;
+
+	if (cfg->status_gpio) {
+		err = button_init(&dc->status, cfg->status_gpio,
+				  cfg->status_pull, BUTTON_DEBOUNCE_DELAY,
+				  on_door_status_changed, dc);
+		if (err)
+			return err;
+	}
+
+	if (cfg->open_btn_gpio) {
+		err = button_init(&dc->open_btn, cfg->open_btn_gpio,
+				  cfg->open_btn_pull, BUTTON_DEBOUNCE_DELAY,
+				  on_open_button_changed, dc);
+		if (err)
+			return err;
+	}
 
 	return 0;
 }
