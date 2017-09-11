@@ -44,6 +44,23 @@ extern const uint8_t external_irq_gpio_pc[];
 /** List of the GPIOs associated to each external interrupts. */
 extern const uint8_t external_irq_gpio_ext[];
 
+uint8_t external_irq_from_gpio(uint8_t gpio)
+{
+	uint8_t i;
+
+	gpio = GPIO_SET_POLARITY(gpio, GPIO_HIGH_ACTIVE);
+
+	for (i = 0; i < EXTERNAL_IRQ_PC_COUNT * 8; i++)
+		if (external_irq_gpio_pc[i] == gpio)
+			return IRQ(PC, i);
+
+	for (i = 0; i < EXTERNAL_IRQ_EXT_COUNT; i++)
+		if (external_irq_gpio_ext[i] == gpio)
+			return IRQ(EXT, i);
+
+	return 0;
+}
+
 uint8_t external_irq_get_gpio(uint8_t irq)
 {
 	uint8_t num = IRQ_NUMBER(irq);

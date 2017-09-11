@@ -112,6 +112,13 @@
  */
 typedef void (*external_irq_handler_t)(uint8_t pin_state, void *context);
 
+/** Get the IRQ associated with a GPIO
+ *
+ * \param gpio ID of the GPIO to lookup
+ * \return An IRQ ID on success, 0 on error
+ */
+uint8_t external_irq_from_gpio(uint8_t gpio);
+
 /** Get the GPIO associated with an IRQ
  *
  * \param irq ID of the IRQ to query
