@@ -12,6 +12,10 @@ const struct door_ctrl_config doors_config[] PROGMEM = {
 		.open_time = 4000,
 		.led_gpio = GPIO(B, 1, LOW_ACTIVE),
 		.buzzer_gpio = GPIO(B, 0, LOW_ACTIVE),
+		.status_gpio = GPIO(B, 2, LOW_ACTIVE),
+		.status_pull = 1,
+		.open_btn_gpio = GPIO(D, 7, LOW_ACTIVE),
+		.open_btn_pull = 1,
 	},
 	{
 		.door_id = 1,
@@ -21,5 +25,9 @@ const struct door_ctrl_config doors_config[] PROGMEM = {
 		.open_time = 4000,
 		.led_gpio = GPIO(D, 3, LOW_ACTIVE),
 		.buzzer_gpio = GPIO(D, 2, LOW_ACTIVE),
+		.status_gpio = GPIO(D, 4, LOW_ACTIVE),
+		.status_pull = 1,
+		.open_btn_gpio = GPIO(C, 1, LOW_ACTIVE),
+		.open_btn_pull = 1,
 	}
 };
