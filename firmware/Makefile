@@ -40,6 +40,7 @@ endif
 avr-door-controller.elf_DEPS :=		\
 	$(MCU_O)			\
 	$(BOARD_O)			\
+	button.o			\
 	ctrl-cmd.o			\
 	door-controller.o		\
 	eeprom.o			\
