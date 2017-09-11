@@ -44,14 +44,19 @@ void trigger_start(struct trigger *tr, uint16_t duration)
 	trigger_start_seq(tr, &tr->single_seq, 1);
 }
 
-void trigger_stop(struct trigger *tr)
+void trigger_set(struct trigger *tr, uint8_t value)
 {
 	timer_deschedule(&tr->timer);
 	if (tr->gpio)
-		gpio_set_value(tr->gpio, 0);
+		gpio_set_value(tr->gpio, value);
 	tr->seq = NULL;
 	tr->seq_len = 0;
 	tr->seq_pos = 0;
+}
+
+void trigger_stop(struct trigger *tr)
+{
+	trigger_set(tr, 0);
 }
 
 int8_t trigger_init(struct trigger *tr, uint8_t gpio,

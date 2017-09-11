@@ -21,6 +21,8 @@ struct trigger {
 int8_t trigger_init(struct trigger *tr, uint8_t gpio,
 		    timer_cb_t on_finished, void *context);
 
+void trigger_set(struct trigger *tr, uint8_t value);
+
 void trigger_start(struct trigger *tr, uint16_t duration);
 
 int8_t trigger_start_seq(struct trigger *tr, const uint16_t *seq,
