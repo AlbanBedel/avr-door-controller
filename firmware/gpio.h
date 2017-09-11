@@ -80,6 +80,15 @@
  */
 #define GPIO_POLARITY(gpio)	(((gpio) >> 7) & 1)
 
+/** Set the polarity of a GPIO ID
+ *
+ * \param gpio GPIO ID
+ * \param pol GPIO Polarity
+ * \return GPIO ID with the new polarity
+ */
+#define GPIO_SET_POLARITY(gpio, pol) \
+	(((gpio) & 0x7F) | (((pol) & 1) << 7))
+
 /** Check if a GPIO is valid
  *
  * \param gpio GPIO ID
