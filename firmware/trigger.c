@@ -27,11 +27,10 @@ static void trigger_on_timeout(void *context)
 int8_t trigger_start_seq(struct trigger *tr, const uint16_t *seq,
 		       uint8_t seq_len)
 {
-	if (tr->seq)
-		return -EBUSY;
 	if (!seq || seq_len < 1 || seq_len == -1)
 		return -EINVAL;
 
+	timer_deschedule(&tr->timer);
 	tr->seq = seq;
 	tr->seq_len = seq_len;
 	tr->seq_pos = 0;
@@ -47,6 +46,7 @@ void trigger_start(struct trigger *tr, uint16_t duration)
 
 void trigger_stop(struct trigger *tr)
 {
+	timer_deschedule(&tr->timer);
 	if (tr->gpio)
 		gpio_set_value(tr->gpio, 0);
 	tr->seq = NULL;
