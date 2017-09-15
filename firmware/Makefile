@@ -12,7 +12,7 @@ SIZE=size
 # LTO gives a much smaller binary but prevent
 # any debugging from beeing used.
 LTO=y
-DEBUG=1
+DEBUG=0
 
 CPPFLAGS = -MMD				\
 	-I.				\
