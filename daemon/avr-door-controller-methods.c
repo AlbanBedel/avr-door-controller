@@ -15,6 +15,35 @@
 #include "../firmware/ctrl-cmd-types.h"
 #include <endian.h>
 
+static void pin_to_str(uint32_t key, char *pin)
+{
+	int i, j;
+
+	for (i = 7, j = 0; i >= 0; i--) {
+		uint8_t digit = (key >> (i * 4)) & 0xF;
+		if (digit == 0xF)
+			continue;
+		pin[j++] = digit + '0';
+	}
+	pin[j] = 0;
+}
+
+static int pin_from_str(uint32_t *pin, const char *str)
+{
+	int i;
+
+	*pin = 0xFFFFFFFF;
+
+	for (i = 0; i < strlen(str); i++) {
+		uint8_t digit = str[i] - '0';
+		if (digit > 9)
+			return -EINVAL;
+		*pin = (*pin << 4) | digit;
+	}
+
+	return 0;
+}
+
 static const struct blobmsg_policy get_device_descriptor_args[] = {
 };
 
@@ -85,7 +114,6 @@ static int read_get_access_record_response(
 	uint32_t key;
 	char skey[9];
 	uint8_t perms;
-	int i, j;
 
 	/* The bit fields are broken with Chaos Calmer MIPS compiler */
 	perms = ((uint8_t*)rec)[4];
@@ -102,13 +130,7 @@ static int read_get_access_record_response(
 		/* Empty record, nothing to add */
 		return 0;
 	case ACCESS_TYPE_PIN:
-		for (i = 7, j = 0; i >= 0; i--) {
-			uint8_t digit = (key >> (i * 4)) & 0xF;
-			if (digit == 0xF)
-				continue;
-			skey[j++] = digit + '0';
-		}
-		skey[j] = 0;
+		pin_to_str(key, skey);
 		break;
 	case ACCESS_TYPE_CARD:
 	case ACCESS_TYPE_CARD_AND_PIN:
@@ -155,7 +177,6 @@ static int write_set_access_record_query(
 	char *str_card, *str_pin;
 	uint8_t doors = 0;
 	uint8_t type;
-	int i;
 
 	cmd->index = htole16(blobmsg_get_u32(args[SET_ACCESS_RECORD_INDEX]));
 
@@ -186,13 +207,8 @@ static int write_set_access_record_query(
 		/* Fallthrough for card and pin */
 
 	case ACCESS_TYPE_PIN:
-		pin = 0xFFFFFFFF;
-		for (i = 0; i < strlen(str_pin); i++) {
-			uint8_t digit = str_pin[i] - '0';
-			if (digit > 9)
-				return UBUS_STATUS_INVALID_ARGUMENT;
-			pin = (pin << 4) | digit;
-		}
+		if (pin_from_str(&pin, str_pin))
+			return UBUS_STATUS_INVALID_ARGUMENT;
 		break;
 
 	default:
@@ -234,7 +250,6 @@ static int write_set_access_query(
 	char *str_card, *str_pin;
 	uint8_t doors = 0;
 	uint8_t type;
-	int i;
 
 	str_pin = blobmsg_get_string(args[SET_ACCESS_PIN]);
 	str_card = blobmsg_get_string(args[SET_ACCESS_CARD]);
@@ -260,13 +275,8 @@ static int write_set_access_query(
 		/* Fallthrough for card and pin */
 
 	case ACCESS_TYPE_PIN:
-		pin = 0xFFFFFFFF;
-		for (i = 0; i < strlen(str_pin); i++) {
-			uint8_t digit = str_pin[i] - '0';
-			if (digit > 9)
-				return UBUS_STATUS_INVALID_ARGUMENT;
-			pin = (pin << 4) | digit;
-		}
+		if (pin_from_str(&pin, str_pin))
+			return UBUS_STATUS_INVALID_ARGUMENT;
 		break;
 	}
 
