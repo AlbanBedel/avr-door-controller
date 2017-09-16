@@ -192,7 +192,6 @@ static int read_get_access_record_response(
 #define SET_ACCESS_RECORD_CARD		2
 #define SET_ACCESS_RECORD_CARD_N_PIN	3
 #define SET_ACCESS_RECORD_DOORS		4
-#define SET_ACCESS_RECORD_ARGS_COUNT	ARRAY_SIZE(set_access_record_args)
 
 static const struct blobmsg_policy set_access_record_args[] = {
 	[SET_ACCESS_RECORD_INDEX] = {
@@ -273,7 +272,6 @@ static int write_set_access_record_query(
 #define SET_ACCESS_PIN		0
 #define SET_ACCESS_CARD		1
 #define SET_ACCESS_DOORS	2
-#define SET_ACCESS_ARGS_COUNT	ARRAY_SIZE(set_access_args)
 
 static const struct blobmsg_policy set_access_args[] = {
 	[SET_ACCESS_PIN] = {
