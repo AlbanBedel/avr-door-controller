@@ -1,5 +1,9 @@
 EESchema-DOCLIB  Version 2.0
 #
+$CMP MT3608
+D MT3608 DC-DC Step Up Power Module
+$ENDCMP
+#
 $CMP XM1584
 D XM1584 DC-DC step-down power supply
 $ENDCMP
