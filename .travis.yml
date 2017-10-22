@@ -5,13 +5,25 @@ addons:
   apt:
     packages:
       - avr-libc
+      - libjson-c-dev
 
-matrix:
-  include:
-      - env:
-        - BOARD=arduino_nano_v2
-      - env:
-        - BOARD=arduino_nano_v3
+env:
+  - MAKEFLAGS="-j2 -k"
+
+install:
+  - git clone git://git.openwrt.org/project/libubox.git ../libubox
+  - pushd ../libubox
+  - cmake -DBUILD_LUA=OFF -DBUILD_EXAMPLES=OFF .
+  - make && sudo make install
+  - popd
+  - git clone git://git.openwrt.org/project/ubus.git ../ubus
+  - pushd ../ubus
+  - cmake -DBUILD_LUA=OFF -DBUILD_EXAMPLES=OFF .
+  - make && sudo make install
+  - popd
 
 # LTO doesn't work properly with gcc 4.8
-script: make -k -j2 -C firmware BOARD=$BOARD LTO=n
+script:
+  - pushd firmware && make BOARD=arduino_nano_v2 LTO=n && make clean && popd
+  - pushd firmware && make BOARD=arduino_nano_v3 LTO=n && make clean && popd
+  - pushd daemon && cmake . && make && popd
