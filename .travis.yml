@@ -1,0 +1,17 @@
+language: c
+os: linux
+dist: trusty
+addons:
+  apt:
+    packages:
+      - avr-libc
+
+matrix:
+  include:
+      - env:
+        - BOARD=arduino_nano_v2
+      - env:
+        - BOARD=arduino_nano_v3
+
+# LTO doesn't work properly with gcc 4.8
+script: make -k -j2 -C firmware BOARD=$BOARD LTO=n
