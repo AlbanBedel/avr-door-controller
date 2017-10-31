@@ -89,6 +89,34 @@ static int read_get_door_config_response(
 	return 0;
 }
 
+#define SET_DOOR_CONFIG_INDEX		0
+#define SET_DOOR_CONFIG_OPEN_TIME	1
+
+static const struct blobmsg_policy set_door_config_args[] = {
+	[SET_DOOR_CONFIG_INDEX] = {
+		.name = "index",
+		.type = BLOBMSG_TYPE_INT32,
+	},
+	[SET_DOOR_CONFIG_OPEN_TIME] = {
+		.name = "open_time",
+		.type = BLOBMSG_TYPE_INT32,
+	},
+};
+
+static int write_set_door_config_query(
+	struct blob_attr *const *const args,
+	void *query, struct blob_buf *bbuf)
+{
+	struct ctrl_cmd_set_door_config *cmd = query;
+
+	blobmsg_add_u32(bbuf, "index", blobmsg_get_u32(args[0]));
+	cmd->index = blobmsg_get_u32(args[SET_DOOR_CONFIG_INDEX]);
+	cmd->config.open_time = htole16(
+		blobmsg_get_u32(args[SET_DOOR_CONFIG_OPEN_TIME]));
+
+	return 0;
+}
+
 #define GET_ACCESS_RECORD_INDEX		0
 #define GET_ACCESS_RECORD_PIN		1
 #define GET_ACCESS_RECORD_CARD		2
@@ -361,6 +389,13 @@ const struct avr_door_ctrl_method avr_door_ctrl_methods[] = {
 		sizeof(struct ctrl_cmd_get_door_config),
 		read_get_door_config_response,
 		sizeof(struct door_config)),
+
+	AVR_DOOR_CTRL_METHOD(
+		set_door_config, 0,
+		CTRL_CMD_SET_DOOR_CONFIG,
+		write_set_door_config_query,
+		sizeof(struct ctrl_cmd_set_door_config),
+		NULL, 0),
 
 	AVR_DOOR_CTRL_METHOD(
 		get_access_record,
