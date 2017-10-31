@@ -57,6 +57,8 @@ static int read_get_device_descriptor_response(
 	blobmsg_add_u32(bbuf, "num_doors", desc->num_doors);
 	blobmsg_add_u32(bbuf, "num_access_records",
 			le16toh(desc->num_access_records));
+	blobmsg_add_u32(bbuf, "free_access_records",
+			le16toh(desc->free_access_records));
 	return 0;
 }
 
