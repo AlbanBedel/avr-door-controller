@@ -377,12 +377,6 @@ class AVRDoorCtrl(object):
                 acl[i] = a
         return acl
 
-    def backup_access_records(self, path):
-        acl = self.get_all_access_records()
-        fd = open(path, 'w')
-        fd.write(json.dumps(acl, sort_keys=True, indent=4) + '\n')
-        fd.close()
-
     def set_all_access_records(self, acl):
         self.remove_all_access()
         for idx in acl:
@@ -391,10 +385,30 @@ class AVRDoorCtrl(object):
                 record['index'] = idx
             self.set_access_record(**record)
 
+class AVRDoorCtrlTool(AVRDoorCtrl):
+    def show_events(self):
+        while True:
+            try:
+                cmd, data = self.read_msg()
+                if len(data) > 0:
+                    print("Command: %02x - %s" % (cmd, binascii.hexlify(data)))
+                else:
+                    print("Command: %02x" % cmd)
+            except IndexError:
+                pass
+
+    def backup_access_records(self, path):
+        acl = self.get_all_access_records()
+        fd = open(path, 'w')
+        fd.write(json.dumps(acl, sort_keys=True, indent=4) + '\n')
+        fd.close()
+        return {}
+
     def restore_access_records(self, path):
         fd = open(path, 'r')
         acl = json.loads(fd.read())
         self.set_all_access_records(acl)
+        return {}
 
 if __name__ == '__main__':
     import binascii, argparse
@@ -501,17 +515,5 @@ if __name__ == '__main__':
             url_kwargs[f] = v
         delattr(args, f)
 
-    door = AVRDoorCtrl(url, **url_kwargs)
-
-    if method == 'show_events':
-        while True:
-            try:
-                cmd, data = door.read_msg()
-                if len(data) > 0:
-                    print("Command: %02x - %s" % (cmd, binascii.hexlify(data)))
-                else:
-                    print("Command: %02x" % cmd)
-            except IndexError:
-                pass
-    else:
-        print(getattr(door, method).__call__(**vars(args)))
+    door = AVRDoorCtrlTool(url, **url_kwargs)
+    print(getattr(door, method).__call__(**vars(args)))
