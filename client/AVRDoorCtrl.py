@@ -397,49 +397,121 @@ class AVRDoorCtrl(object):
         self.set_all_access_records(acl)
 
 if __name__ == '__main__':
-    import binascii, sys
+    import binascii, argparse
 
-    uri = None
-    uri_kwargs = {}
-    method = None
-    method_kwargs = {}
+    # Main parser
+    parser = argparse.ArgumentParser(
+        description='Low level tool for the AVR Door Controllers')
+    parser.add_argument('url', metavar = 'URL')
 
-    # Parse the command line
-    i = 1
-    while i < len(sys.argv):
-        arg = sys.argv[i]
-        if arg.startswith('--'):
-            if method == None:
-                uri_kwargs[arg[2:]] = sys.argv[i + 1]
-            else:
-                method_kwargs[arg[2:]] = sys.argv[i + 1]
-            i += 2
-        elif uri == None:
-            uri = arg
-            i += 1
-        elif method == None:
-            method = arg
-            i += 1
-        else:
-            raise ValueError("Too many parameters")
+    parser.add_argument(
+        '--timeout', type = int, help = 'Timeout for serial or UBus access')
+    parser.add_argument(
+        '--username', help = 'Username for UBus access')
+    parser.add_argument(
+        '--password', help = 'Password for UBus access')
 
-    if uri == None:
-        raise ValueError("No controller URI given")
-    door = AVRDoorCtrl(uri, **uri_kwargs)
+    # Method parsers
+    method_subparsers = parser.add_subparsers(dest='method')
 
-    # Run the method
-    if method != None:
-        m = getattr(door, method)
-        print(m.__call__(**method_kwargs))
-        sys.exit(0)
+    method_parser = method_subparsers.add_parser(
+        'get_device_descriptor', help = 'Get the device descriptor')
 
-    # Otherwise just display the events received
-    while True:
-        try:
-            cmd, data = door.read_msg()
-            if len(data) > 0:
-                print("Command: %02x - %s" % (cmd, binascii.hexlify(data)))
-            else:
-                print("Command: %02x" % cmd)
-        except IndexError:
-            pass
+    method_parser = method_subparsers.add_parser(
+        'get_door_config', help = 'Get a door configuration')
+    method_parser.add_argument(
+        '--index', type = int, required = True,
+        help = 'Door index')
+
+    method_parser = method_subparsers.add_parser(
+        'set_door_config', help = 'Set a door configuration')
+    method_parser.add_argument(
+        '--index', type = int, required = True,
+        help = 'Door index')
+    method_parser.add_argument(
+        '--open_time', metavar = 'TIME', type = int, required = True,
+        help = 'Time to keep the door open, in milliseconds')
+
+    method_parser = method_subparsers.add_parser(
+        'get_access_record', help = 'Get an access record')
+    method_parser.add_argument(
+        '--index', type = int, required = True,
+        help = 'Access record index')
+
+    method_parser = method_subparsers.add_parser(
+        'set_access_record', help = 'Set an access record')
+    method_parser.add_argument(
+        '--index', type = int, required = True,
+        help = 'Access record index')
+    method_parser.add_argument(
+        '--card', type = int, help = 'Card number')
+    method_parser.add_argument(
+        '--pin', help = 'PIN with 1 to 8 digits')
+    method_parser.add_argument(
+        '--doors', type = int, required = True,
+        help = 'Bitmask of the doors that can be opened')
+
+    method_parser = method_subparsers.add_parser(
+        'set_access', help = 'Add or remove access to a card and/or pin')
+    method_parser.add_argument(
+        '--card', type = int, help = 'Card number')
+    method_parser.add_argument(
+        '--pin', help = 'PIN with 1 to 8 digits')
+    method_parser.add_argument(
+        '--doors', type = int, required = True,
+        help = 'Bitmask of the doors that can be opened with this card and/or pin')
+
+    method_parser = method_subparsers.add_parser(
+        'get_access', help = 'Get the access for a card and/or pin')
+    method_parser.add_argument(
+        '--card', type = int, help = 'Card number')
+    method_parser.add_argument(
+        '--pin', help = 'PIN with 1 to 8 digits')
+
+    method_parser = method_subparsers.add_parser(
+        'remove_all_access', help = 'Erase all access records')
+
+    method_parser = method_subparsers.add_parser(
+        'show_events', help = 'Show the events received from the controller')
+
+    method_parser = method_subparsers.add_parser(
+        'backup_access_records',
+        help = 'Backup all the access records to file')
+    method_parser.add_argument(
+        'path', help = 'File to save the access records to')
+
+    method_parser = method_subparsers.add_parser(
+        'restore_access_records',
+        help = 'Restore all the access records from a backup file')
+    method_parser.add_argument(
+        'path', help = 'File to read the access records from')
+
+    args = parser.parse_args()
+
+    url = args.url
+    del args.url
+
+    method = args.method
+    del args.method
+
+    url_kwargs = {}
+    for f in [ 'timeout', 'username', 'password' ]:
+        v = getattr(args, f)
+        if v is not None:
+            url_kwargs[f] = v
+        delattr(args, f)
+
+    door = AVRDoorCtrl(url, **url_kwargs)
+
+    if method == 'show_events':
+        while True:
+            try:
+                cmd, data = door.read_msg()
+                if len(data) > 0:
+                    print("Command: %02x - %s" % (cmd, binascii.hexlify(data)))
+                else:
+                    print("Command: %02x" % cmd)
+            except IndexError:
+                pass
+    else:
+        print(getattr(door, method).__call__(**vars(args)))
