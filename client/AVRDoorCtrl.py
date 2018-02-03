@@ -337,7 +337,7 @@ class AVRDoorCtrlUbusHandler(ubus.UObject):
 
     @ubus.method
     def set_access_record(self, index: int, pin: str = None,
-                          card: int = None):
+                          card: int = None, doors: int = 0):
         pass
 
     @ubus.method
