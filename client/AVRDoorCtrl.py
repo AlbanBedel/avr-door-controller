@@ -291,14 +291,14 @@ class AVRDoorCtrlSerialHandler(object):
 
     def set_access(self, pin = None, card = None, doors = 0):
         if pin == None and card == None:
-            raise ValueError
+            raise ValueError('No card number or pin given')
         req = self._pack_access_record(pin, card, doors)
         self.send_cmd(self.CMD_SET_ACCESS, req, 0)
         return {}
 
     def get_access(self, pin = None, card = None):
         if pin == None and card == None:
-            raise ValueError
+            raise ValueError('No card number or pin given')
         req = self._pack_access_record(pin, card)
         response = self.send_cmd(self.CMD_GET_ACCESS, req, 1)
         return {
