@@ -178,7 +178,7 @@ class AVRDoorCtrlSerialHandler(object):
         if reply == self.REPLY_ERROR:
             if len(response) < 1:
                 raise Exception("Invalid error reply")
-            errno, = struct.unpack("b", response[0])
+            errno, = struct.unpack("b", response)
             raise Exception("Error %d" % -errno)
         # Make sure we got an OK
         if reply != self.REPLY_OK:
