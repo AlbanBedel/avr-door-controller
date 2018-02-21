@@ -347,14 +347,18 @@ class DoorActions(Actions):
         print("-" * 6 + "+" + "-" * 32 + "+" + "-" * 32 + "+" + "-" * 7)
 
     def print_list_entry(self, d):
-        print("% 5d | %-30s | %-30s | % 3d" %
-              (d.id, d.location, d.controller.location, d.index))
+        ctrl = d.controller.location if d.controller is not None else ''
+        port = "% 3d" % d.index if d.index is not None else ''
+        print("% 5d | %-30s | %-30s | %s" %
+              (d.id, d.location, ctrl, port))
 
     def show_instance(self, door):
         print("Door ID:\t%d" % door.id)
         print("Location:\t%s" % door.location)
-        print("Controller:\t%s" % door.controller.location)
-        print("Port:\t\t%d" % door.index)
+        if door.controller is not None:
+            print("Controller:\t%s" % door.controller.location)
+        if door.index is not None:
+            print("Port:\t\t%d" % door.index)
         if len(door.access) > 0:
             print("Access Records:")
             for a in door.access:

@@ -57,8 +57,8 @@ create table if not exists Doors (
 	CreatedOn datetime not null default current_timestamp,
 	LastModified datetime not null default current_timestamp
 					on update current_timestamp,
-	ControllerID int unsigned not null,
-	DoorIndex int unsigned not null,
+	ControllerID int unsigned,
+	DoorIndex int unsigned,
 	Location char(255) not null unique,
 	OpeningDuration int unsigned,
 	foreign key (ControllerID) references Controllers(ControllerID),
@@ -128,7 +128,8 @@ create or replace view ControllerACL as
 	from AllAccess
 	left join Users on (AllAccess.UserID = Users.UserID)
 	join Doors on (AllAccess.DoorID = Doors.DoorID)
-	where (Card is not null -- Users with a card or PIN only
+	where ControllerID is not null and DoorIndex is not null
+	  and (Card is not null -- Users with a card or PIN only
 	       or (AllAccess.UserID is null and PIN is not null))
 	  and (Until is null or Until > now())
 	group by ControllerID, AllAccess.UserID, PIN;
