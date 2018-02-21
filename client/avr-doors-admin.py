@@ -680,10 +680,10 @@ if __name__ == '__main__':
         'location', metavar = 'LOCATION', type = str,
         help = 'Location of the door')
     subparser.add_argument(
-        'controller', metavar = 'CONTROLLER', type = str,
+        '--controller', metavar = 'CONTROLLER', type = str,
         help = 'Controller the door is connected to')
     subparser.add_argument(
-        'index', metavar = 'PORT', type = int,
+        '--port', metavar = 'PORT', type = int, dest = 'index',
         help = 'Controller port the door is connected to')
 
     # Update a user record
@@ -699,9 +699,15 @@ if __name__ == '__main__':
         '--controller', metavar = 'CONTROLLER', required = False,
         help = 'Update the doors controller')
     subparser.add_argument(
+        '--delete-controller', action = 'store_true',
+        help = 'Detach the door from its controller')
+    subparser.add_argument(
         '--port', metavar = 'PORT', dest = 'index',
         type = int, required = False,
         help = 'Update the doors controller')
+    subparser.add_argument(
+        '--delete-port', action = 'store_true', dest = 'delete_index',
+        help = 'Detach the door from its controller port')
 
     # Remove a door
     subparser = action_subparsers.add_parser(
