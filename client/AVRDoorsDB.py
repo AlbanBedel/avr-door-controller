@@ -181,10 +181,6 @@ class Door(APIObject):
             pass
         else:
             raise ValueError('This access permission already exists')
-        if user is None and group is None and pin is None:
-            raise ValueError("No user, group or PIN given for access")
-        if user is not None and group is not None:
-            raise ValueError("Both user and group given for access")
         if user is not None and not isinstance(user, User):
             user = User(self._db, user)
         if group is not None and not isinstance(group, Group):
