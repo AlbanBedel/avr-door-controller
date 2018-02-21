@@ -24,7 +24,7 @@ create table if not exists Groups (
 	CreatedOn datetime not null default current_timestamp,
 	LastModified datetime not null default current_timestamp
 					on update current_timestamp,
-	GroupName char(128) not null,
+	GroupName char(128) not null unique,
 	EMail char(128)
 );
 
