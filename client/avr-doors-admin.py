@@ -207,7 +207,8 @@ class GroupActions(Actions):
             for gu in grp.users:
                 print("\t%s" % gu)
 
-    def create(self, users = None, admin_users = None, **kwargs):
+    def create(self, users = None, admin_users = None,
+               doors = None, admin_doors = None, **kwargs):
         group = super().create(**kwargs)
         if users is not None:
             for user in users:
@@ -215,6 +216,12 @@ class GroupActions(Actions):
         if admin_users is not None:
             for user in admin_users:
                 group.add_user(user, True)
+        if doors is not None:
+            for d in doors:
+                group.add_access(d)
+        if admin_doors is not None:
+            for d in admin_doors:
+                group.add_access(d, admin = True)
         return group
 
     def add_users(self, group, users, **kwargs):
@@ -270,7 +277,8 @@ class UserActions(Actions):
             for a in user.doors:
                 print("\t%s" % a.describe_to())
 
-    def create(self, groups = None, admin_groups = None, **kwargs):
+    def create(self, groups = None, admin_groups = None,
+               doors = None, admin_doors = None, **kwargs):
         u = super(UserActions, self).create(**kwargs)
         if groups is not None:
             for g in groups:
@@ -278,6 +286,12 @@ class UserActions(Actions):
         if admin_groups is not None:
             for g in admin_groups:
                 u.add_to_group(g, True)
+        if doors is not None:
+            for d in doors:
+                u.add_access(d)
+        if admin_doors is not None:
+            for d in admin_doors:
+                u.add_access(d, admin = True)
         return u
 
 class ControllerActions(Actions):
@@ -431,6 +445,14 @@ if __name__ == '__main__':
         '--group-admin', metavar = 'GROUP', type = str,
         required = False, action = 'append', dest = 'admin_groups',
         help = 'Group the user should be added to as admin')
+    subparser.add_argument(
+        '--door', metavar = 'DOOR', type = str,
+        required = False, action = 'append', dest = 'doors',
+        help = 'Give the user access to a door')
+    subparser.add_argument(
+        '--door-admin', metavar = 'DOOR', type = str,
+        required = False, action = 'append', dest = 'admin_doors',
+        help = 'Give the user access to a door as admin')
 
     # Update a user record
     subparser = action_subparsers.add_parser(
@@ -507,6 +529,14 @@ if __name__ == '__main__':
         '--admin-user', metavar = 'USER', type = str,
         required = False, action = 'append', dest = 'admin_users',
         help = 'Add an admin user to the group')
+    subparser.add_argument(
+        '--door', metavar = 'DOOR', type = str,
+        required = False, action = 'append', dest = 'doors',
+        help = 'Give the group access to a door')
+    subparser.add_argument(
+        '--door-admin', metavar = 'DOOR', type = str,
+        required = False, action = 'append', dest = 'admin_doors',
+        help = 'Give the group access to a door as admin')
 
     # Remove a group
     subparser = action_subparsers.add_parser(

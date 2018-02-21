@@ -58,6 +58,22 @@ class User(APIObject):
             group = Group(self._db, group)
         return group.is_admin(self)
 
+    def add_access(self, door, pin = None, until = None, admin = False):
+        if not isinstance(door, Door):
+            door = Door(self._db, door)
+        door.add_access(user = self, pin = pin, until = until, admin = admin)
+
+    def update_access(self, door, pin = None, until = None, admin = False):
+        if not isinstance(door, Door):
+            door = Door(self._db, door)
+        door.update_access(
+            user = self, new_pin = pin, until = until, admin = admin)
+
+    def remove_access(self, door):
+        if not isinstance(door, Door):
+            door = Door(self._db, door)
+        door.remove_access(user = self)
+
 class Group(APIObject):
     table = 'Groups'
     href_format = 'group/%d'
@@ -106,6 +122,22 @@ class Group(APIObject):
     def remove_user(self, user):
         gu = self.get_user(user)
         gu.delete()
+
+    def add_access(self, door, pin = None, until = None, admin = False):
+        if not isinstance(door, Door):
+            door = Door(self._db, door)
+        door.add_access(group = self, pin = pin, until = until, admin = admin)
+
+    def update_access(self, door, pin = None, until = None, admin = False):
+        if not isinstance(door, Door):
+            door = Door(self._db, door)
+        door.update_access(
+            group = self, new_pin = pin, until = until, admin = admin)
+
+    def remove_access(self, door):
+        if not isinstance(door, Door):
+            door = Door(self._db, door)
+        door.remove_access(group = self)
 
 class GroupUser(DB.Object):
     table = 'GroupUsers'
