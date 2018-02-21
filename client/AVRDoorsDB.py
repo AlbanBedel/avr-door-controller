@@ -233,7 +233,7 @@ class DoorAccess(APIObject):
                 desc += ", expired since %s" % self.until
             else:
                 desc += ", until %s" % self.until
-        if self.admin is True:
+        if self.admin:
             desc += " (ADMIN)"
         return desc
 
