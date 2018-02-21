@@ -207,6 +207,16 @@ class GroupActions(Actions):
             for gu in grp.users:
                 print("\t%s" % gu)
 
+    def create(self, users = None, admin_users = None, **kwargs):
+        group = super().create(**kwargs)
+        if users is not None:
+            for user in users:
+                group.add_user(user)
+        if admin_users is not None:
+            for user in admin_users:
+                group.add_user(user, True)
+        return group
+
     def add_users(self, group, users, **kwargs):
         group = self.cls(self.db, group)
         for user in users:
@@ -484,6 +494,14 @@ if __name__ == '__main__':
     subparser.add_argument(
         '--email', metavar = 'EMAIL', type = str, required = False,
         help = 'Contact EMail for the Group')
+    subparser.add_argument(
+        '--user', metavar = 'USER', type = str,
+        required = False, action = 'append', dest = 'users',
+        help = 'Add a user to the group')
+    subparser.add_argument(
+        '--admin-user', metavar = 'USER', type = str,
+        required = False, action = 'append', dest = 'admin_users',
+        help = 'Add an admin user to the group')
 
     # Remove a group
     subparser = action_subparsers.add_parser(
