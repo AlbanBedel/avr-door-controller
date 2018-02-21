@@ -34,8 +34,10 @@ create table if not exists GroupUsers (
 	-- If set can add/remove users from the group
 	GroupAdmin bool not null default false,
 
-	foreign key (GroupID) references Groups(GroupID),
-	foreign key (UserID) references Users(UserID),
+	foreign key (GroupID) references Groups(GroupID)
+		on update cascade on delete cascade,
+	foreign key (UserID) references Users(UserID)
+		on update cascade on delete cascade,
 	primary key(GroupID, UserID)
 );
 
@@ -61,7 +63,8 @@ create table if not exists Doors (
 	DoorIndex int unsigned,
 	Location char(255) not null unique,
 	OpeningDuration int unsigned,
-	foreign key (ControllerID) references Controllers(ControllerID),
+	foreign key (ControllerID) references Controllers(ControllerID)
+		on update cascade on delete set null,
 	unique key (ControllerID, DoorIndex)
 );
 
@@ -77,9 +80,12 @@ create table if not exists DoorAccess (
 	Until datetime,
 	DoorAdmin bool not null default false,
 
-	foreign key (DoorID) references Doors(DoorID),
-	foreign key (UserID) references Users(UserID),
+	foreign key (DoorID) references Doors(DoorID)
+		on update cascade on delete cascade,
+	foreign key (UserID) references Users(UserID)
+		on update cascade on delete cascade,
 	foreign key (GroupID) references Groups(GroupID)
+		on update cascade on delete cascade
 );
 
 -- The ACLs currently in the controllers
@@ -89,7 +95,8 @@ create table if not exists ControllerSetACL (
 	PIN char(8),
 	Doors int unsigned not null,
 
-	foreign key (ControllerID) references Controllers(ControllerID),
+	foreign key (ControllerID) references Controllers(ControllerID)
+		on update cascade on delete cascade,
 	unique key(ControllerID, Card, PIN)
 );
 -- BUG: The unique key(ControllerID, Card, PIN) doesn't work as NULL is
