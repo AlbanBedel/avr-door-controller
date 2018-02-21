@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import serial
-import termios
 import struct
 import crcmod
 import ubus
