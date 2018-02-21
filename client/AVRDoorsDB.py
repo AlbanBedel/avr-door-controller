@@ -129,7 +129,6 @@ class Controller(APIObject):
     url = DB.Column('URL')
     username = DB.Column('Username')
     password = DB.Column('Password')
-    uobject = DB.Column('UObject')
     firmware = DB.Column('Firmware')
     max_acl = DB.Column('MaxACL')
 
