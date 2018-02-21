@@ -289,8 +289,9 @@ class ControllerActions(Actions):
         print("-" * 6 + "+" + "-" * 32 + "+" + "-" * 7 + "+" + "-" * 8)
 
     def print_list_entry(self, c):
-        print("% 5d | %-30s | % 5d | %4d" %
-              (c.id, c.location, len(c.doors), c.max_acl))
+        max_acl = "%4d" % c.max_acl if c.max_acl is not None else ''
+        print("% 5d | %-30s | % 5d | %s" %
+              (c.id, c.location, len(c.doors), max_acl))
 
     def show_instance(self, ctrl):
         print("Controller ID:\t%d" % ctrl.id)
