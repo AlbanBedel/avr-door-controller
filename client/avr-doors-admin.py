@@ -523,12 +523,12 @@ if __name__ == '__main__':
         'users', metavar = 'USER', type = str, nargs = '+',
         help = 'The users to add')
 
-    # Add users to a group
+    # Update group users
     subparser = action_subparsers.add_parser(
-        'update-users', help = 'Add one or more users to a group')
+        'update-users', help = 'Update one or more group users')
     subparser.add_argument(
         'group', metavar = 'GROUP', type = str,
-        help = 'The group the user should be added to')
+        help = 'The group whose users should be updated')
     subparser.add_argument(
         '--admin', action = 'store_true',
         help = 'Set the users as group admin')
