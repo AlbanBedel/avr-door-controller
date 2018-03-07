@@ -29,6 +29,12 @@ static int8_t ctrl_cmd_get_device_descriptor(
 				    &desc, sizeof(desc));
 }
 
+static int8_t ctrl_cmd_ping(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
 static int8_t ctrl_cmd_get_door_config(
 	struct ctrl_transport *ctrl, const void *payload)
 {
@@ -125,6 +131,11 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
 		.length  = 0,
 		.handler = ctrl_cmd_get_device_descriptor,
+	},
+	{
+		.type    = CTRL_CMD_PING,
+		.length  = 0,
+		.handler = ctrl_cmd_ping,
 	},
 	{
 		.type    = CTRL_CMD_GET_DOOR_CONFIG,
