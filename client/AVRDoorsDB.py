@@ -139,7 +139,7 @@ class Group(APIObject):
             door = Door(self._db, door)
         door.remove_access(group = self)
 
-class GroupUser(DB.Object):
+class GroupUser(APIObject):
     table = 'GroupUsers'
 
     group = DB.Column('GroupID', Group, index = True)

@@ -29,6 +29,9 @@ create table if not exists Groups (
 );
 
 create table if not exists GroupUsers (
+	CreatedOn datetime not null default current_timestamp,
+	LastModified datetime not null default current_timestamp
+					on update current_timestamp,
 	GroupID int unsigned not null,
 	UserID int unsigned not null,
 	-- If set can add/remove users from the group
