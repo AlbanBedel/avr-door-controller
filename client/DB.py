@@ -225,7 +225,7 @@ class Object(object):
     def _get_from_db(cls, db, order_by = None, where = None, match = None):
         if order_by is None:
             order_by = cls.columns_name(*cls.index_columns())
-        where = ' where %s' if where is not None else ''
+        where = ' where %s' % where if where is not None else ''
         match = () if match is None else cls.match_value(match)
         query = "select %s from %s%s order by %s" % (
             cls.columns_name(*cls.index_columns()),
