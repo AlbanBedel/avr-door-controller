@@ -129,7 +129,7 @@ class Object(object):
 
     @classmethod
     def columns_condition(cls, *columns):
-        return " and ".join(("%s = %%s" % c.name for c in columns))
+        return " and ".join(("%s <=> %%s" % c.name for c in columns))
 
     @staticmethod
     def match_value(value):
