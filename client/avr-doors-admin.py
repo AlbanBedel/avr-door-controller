@@ -272,9 +272,9 @@ class UserActions(Actions):
                     g += " (ADMIN)"
                 groups.append(g)
             print("Groups:\t\t%s" % (", ".join(groups),))
-        if len(user.doors) > 0:
+        if len(user.access) > 0:
             print("Access:")
-            for a in user.doors:
+            for a in user.access:
                 print("\t%s" % a.describe_to())
 
     def create(self, groups = None, admin_groups = None,

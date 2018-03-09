@@ -243,7 +243,36 @@ class Door(APIObject):
         a = self.get_access(user, group, pin)
         a.delete()
 
-class DoorAccess(APIObject):
+class Access(object):
+    def expired(self):
+        return self.until and self.until < datetime.now()
+
+    def describe_condition(self):
+        desc = ""
+        if self.pin is not None:
+            desc += " with PIN %s" % self.pin
+        if self.until is not None:
+            if self.until < datetime.now():
+                desc += ", expired since %s" % self.until
+            else:
+                desc += ", until %s" % self.until
+        return desc
+
+    def describe_to(self):
+        return self.door.location + self.describe_condition()
+
+    def __str__(self):
+        return self.describe_to()
+
+class AllAccess(DB.Object, Access):
+    table = 'AllAccess'
+
+    door = DB.Column('DoorID', Door, index = True, writable = False)
+    user = DB.Column('UserID', User, index = True, writable = False)
+    pin = DB.Column('PIN', index = True)
+    until = DB.Column('Until')
+
+class DoorAccess(APIObject, Access):
     table = 'DoorAccess'
     href_format = 'door-access/%d'
 
@@ -257,14 +286,7 @@ class DoorAccess(APIObject):
     admin = DB.Column('DoorAdmin')
 
     def describe_condition(self):
-        desc = ""
-        if self.pin is not None:
-            desc += " with PIN %s" % self.pin
-        if self.until is not None:
-            if self.until < datetime.now():
-                desc += ", expired since %s" % self.until
-            else:
-                desc += ", until %s" % self.until
+        desc = super().describe_condition()
         if self.admin:
             desc += " (ADMIN)"
         return desc
@@ -278,10 +300,8 @@ class DoorAccess(APIObject):
             desc = "All"
         return desc + self.describe_condition()
 
-    def describe_to(self):
-        return self.door.location + self.describe_condition()
-
 User.groups = DB.List(GroupUser)
+User.access = DB.List(AllAccess)
 Group.users = DB.List(GroupUser)
 
 Controller.doors = DB.List(Door)
