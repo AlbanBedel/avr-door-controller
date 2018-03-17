@@ -294,6 +294,18 @@ class UserActions(Actions):
                 u.add_access(d, admin = True)
         return u
 
+    def add_to_group(self, user, groups, admin = False):
+        user = self.cls(self.db, user)
+        for grp in groups:
+            user.add_to_group(grp, admin)
+        self.show_instance(user)
+
+    def remove_from_group(self, user, groups):
+        user = self.cls(self.db, user)
+        for grp in groups:
+            user.remove_from_group(grp)
+        self.show_instance(user)
+
 class ControllerActions(Actions):
     cls = Controller
 
@@ -494,6 +506,29 @@ if __name__ == '__main__':
     subparser.add_argument(
         'identifier', metavar = 'USER', type = str,
         help = 'Name or ID of the user to delete')
+
+    # Add a user to some groups
+    subparser = action_subparsers.add_parser(
+        'add-to-group', help = 'Add a user to one or more groups')
+    subparser.add_argument(
+        'user', metavar = 'USER', type = str,
+        help = 'The user to add to the groups')
+    subparser.add_argument(
+        '--admin', action = 'store_true',
+        help = 'Set the user as group admin')
+    subparser.add_argument(
+        'groups', metavar = 'GROUP', type = str, nargs = '+',
+        help = 'The groups to add')
+
+    # Add a user to some groups
+    subparser = action_subparsers.add_parser(
+        'remove-from-group', help = 'Remove a user from one or more groups')
+    subparser.add_argument(
+        'user', metavar = 'USER', type = str,
+        help = 'The user to add to the groups')
+    subparser.add_argument(
+        'groups', metavar = 'GROUP', type = str, nargs = '+',
+        help = 'The groups to add')
 
     #
     # Groups
