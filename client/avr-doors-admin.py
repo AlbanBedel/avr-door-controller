@@ -390,13 +390,13 @@ class DoorActions(Actions):
             for a in door.access:
                 print("\t%s" % a.describe_who())
 
-    def add_access(self, door, user, group, pin, until, admin):
+    def add_access(self, door, user, group, pin, since, until, admin):
         door = self.cls(self.db, door)
-        door.add_access(user, group, pin, until, admin)
+        door.add_access(user, group, pin, since, until, admin)
 
-    def update_access(self, door, user, group, pin, new_pin, until, admin):
+    def update_access(self, door, user, group, pin, new_pin, since, until, admin):
         door = self.cls(self.db, door)
-        door.update_access(user, group, pin, new_pin, until, admin)
+        door.update_access(user, group, pin, new_pin, since, until, admin)
 
     def remove_access(self, door, user, group, pin):
         door = self.cls(self.db, door)
@@ -797,6 +797,9 @@ if __name__ == '__main__':
     subparser.add_argument(
         '--pin', metavar = 'PIN', type = str,
         help = 'PIN for this access')
+    subparser.add_argument(
+        '--since', metavar = 'DATE', type = str,
+        help = 'Starting date for this access')
     subparser.add_argument(
         '--until', metavar = 'DATE', type = str,
         help = 'Expiration date for this access')

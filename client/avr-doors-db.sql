@@ -80,6 +80,7 @@ create table if not exists DoorAccess (
 	UserID int unsigned,
 	GroupID int unsigned,
 	PIN char(8),
+	Since datetime,
 	Until datetime,
 	DoorAdmin bool not null default false,
 
@@ -108,13 +109,13 @@ create table if not exists ControllerSetACL (
 
 -- All explicit access record for users
 create or replace view UserAccess as
-	select DoorID, UserID, PIN, Until
+	select DoorID, UserID, PIN, Since, Until
 	from DoorAccess
 	where GroupID is null;
 
 -- All access records generated from the groups
 create or replace view GroupAccess as
-	select DoorID, GroupUsers.UserID, PIN, Until
+	select DoorID, GroupUsers.UserID, PIN, Since, Until
 	from DoorAccess
 	join GroupUsers on DoorAccess.GroupID = GroupUsers.GroupID;
 
@@ -124,7 +125,7 @@ create or replace view AllAccess as
 	select * from UserAccess
 	union all
 	(select GroupAccess.DoorID, GroupAccess.UserID,
-		GroupAccess.PIN, GroupAccess.Until
+		GroupAccess.PIN, GroupAccess.Since, GroupAccess.Until
 	 from GroupAccess
 	 left join UserAccess
 	 on UserAccess.DoorID = GroupAccess.DoorID and
@@ -141,6 +142,7 @@ create or replace view ControllerACL as
 	where ControllerID is not null and DoorIndex is not null
 	  and (Card is not null -- Users with a card or PIN only
 	       or (AllAccess.UserID is null and PIN is not null))
+	  and (Since is null or Since <= now())
 	  and (Until is null or Until > now())
 	group by ControllerID, AllAccess.UserID, PIN;
 

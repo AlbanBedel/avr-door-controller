@@ -58,16 +58,20 @@ class User(APIObject):
             group = Group(self._db, group)
         return group.is_admin(self)
 
-    def add_access(self, door, pin = None, until = None, admin = False):
+    def add_access(self, door, pin = None, since = None,
+                   until = None, admin = False):
         if not isinstance(door, Door):
             door = Door(self._db, door)
-        door.add_access(user = self, pin = pin, until = until, admin = admin)
+        door.add_access(user = self, pin = pin, since = since,
+                        until = until, admin = admin)
 
-    def update_access(self, door, pin = None, until = None, admin = False):
+    def update_access(self, door, pin = None, since = None,
+                      until = None, admin = False):
         if not isinstance(door, Door):
             door = Door(self._db, door)
         door.update_access(
-            user = self, new_pin = pin, until = until, admin = admin)
+            user = self, new_pin = pin, since = since,
+            until = until, admin = admin)
 
     def remove_access(self, door):
         if not isinstance(door, Door):
@@ -123,16 +127,20 @@ class Group(APIObject):
         gu = self.get_user(user)
         gu.delete()
 
-    def add_access(self, door, pin = None, until = None, admin = False):
+    def add_access(self, door, pin = None, since = None,
+                   until = None, admin = False):
         if not isinstance(door, Door):
             door = Door(self._db, door)
-        door.add_access(group = self, pin = pin, until = until, admin = admin)
+        door.add_access(group = self, pin = pin, since = since,
+                        until = until, admin = admin)
 
-    def update_access(self, door, pin = None, until = None, admin = False):
+    def update_access(self, door, pin = None, since = None,
+                      until = None, admin = False):
         if not isinstance(door, Door):
             door = Door(self._db, door)
         door.update_access(
-            group = self, new_pin = pin, until = until, admin = admin)
+            group = self, new_pin = pin, since = since,
+            until = until, admin = admin)
 
     def remove_access(self, door):
         if not isinstance(door, Door):
@@ -205,7 +213,7 @@ class Door(APIObject):
                               'and GroupID is NULL and PIN = %s')
 
     def add_access(self, user = None, group = None,
-                   pin = None, until = None, admin = False):
+                   pin = None, since = None, until = None, admin = False):
         try:
             self.get_access(user, group, pin)
         except ValueError:
@@ -224,17 +232,20 @@ class Door(APIObject):
         a.user = user
         a.group = group
         a.pin = pin
+        a.since = since
         a.until = until
         a.admin = admin
         a.save()
 
     def update_access(self, user = None, group = None, pin = None,
-                      new_pin = None, until = None, admin = False):
+                      new_pin = None, since = None, until = None,
+                      admin = False):
         a = self.get_access(user, group, pin)
         # PIN only can't be admin
         if a.user is None and a.group is None:
             admin = False
         a.pin = new_pin
+        a.since = since
         a.until = until
         a.admin = admin
         a.save()
@@ -244,15 +255,21 @@ class Door(APIObject):
         a.delete()
 
 class Access(object):
-    def expired(self):
-        return self.until and self.until < datetime.now()
+    def valid(self):
+        return (self.since is None or self.since <= datetime.now()) and \
+            (self.until is None or self.until > datetime.now())
 
     def describe_condition(self):
         desc = ""
         if self.pin is not None:
             desc += " with PIN %s" % self.pin
+        if self.since is not None:
+            if self.since <= datetime.now():
+                desc += ", started %s" % self.since
+            else:
+                desc += ", starting %s" % self.since
         if self.until is not None:
-            if self.until < datetime.now():
+            if self.until <= datetime.now():
                 desc += ", expired since %s" % self.until
             else:
                 desc += ", until %s" % self.until
@@ -270,6 +287,7 @@ class AllAccess(DB.Object, Access):
     door = DB.Column('DoorID', Door, index = True, writable = False)
     user = DB.Column('UserID', User, index = True, writable = False)
     pin = DB.Column('PIN', index = True)
+    since = DB.Column('Since')
     until = DB.Column('Until')
 
 class DoorAccess(APIObject, Access):
@@ -282,6 +300,7 @@ class DoorAccess(APIObject, Access):
     user = DB.Column('UserID', User)
     group = DB.Column('GroupID', Group)
     pin = DB.Column('PIN')
+    since = DB.Column('Since')
     until = DB.Column('Until')
     admin = DB.Column('DoorAdmin')
 
