@@ -15,16 +15,11 @@ class APIObject(DB.Object):
                 cond = '%s = %%s' % self.name_column
         super(APIObject, self).load(match, cond)
 
-    @property
-    def href(self):
-        return self.href_format % self.columns_value(*self.index_columns())
-
     created_on = DB.Column('CreatedOn', writable = False)
     last_modified = DB.Column('LastModified', writable = False)
 
 class User(APIObject):
     table = 'Users'
-    href_format = 'user/%d'
     name_column = 'UserName'
 
     userid = DB.Column('UserID', index = True, writable = False)
@@ -80,7 +75,6 @@ class User(APIObject):
 
 class Group(APIObject):
     table = 'Groups'
-    href_format = 'group/%d'
     name_column = 'GroupName'
 
     groupid = DB.Column('GroupID', index = True, writable = False)
@@ -160,7 +154,6 @@ class GroupUser(APIObject):
 
 class Controller(APIObject):
     table = 'Controllers'
-    href_format = 'controller/%d'
     name_column = 'Location'
 
     controller_id = DB.Column('ControllerID',
@@ -181,7 +174,6 @@ class Controller(APIObject):
 
 class Door(APIObject):
     table = 'Doors'
-    href_format = 'door/%d'
     name_column = 'Location'
 
     doorid = DB.Column('DoorID', index = True, writable = False)
@@ -303,7 +295,6 @@ class AllAccess(DB.Object, Access):
 
 class DoorAccess(APIObject, Access):
     table = 'DoorAccess'
-    href_format = 'door-access/%d'
 
     door_access_id = DB.Column('DoorAccessID',
                                index = True, writable = False)
@@ -345,16 +336,13 @@ if __name__ == '__main__':
     import MySQLdb as dbapi2
     db = dbapi2.connect(db='AVRDoors')
     u = User(db, 1)
-    print(u.href)
     for gu in u.groups:
         print("%s" % (gu.group.name,))
     print()
     g = Group(db, 1)
-    print(g.href)
     for a in g.doors:
         print("%s" % a.door.location)
     print()
     d = Door(db, 1)
-    print(d.href)
     for a in d.access:
         print(a.describe_who())
