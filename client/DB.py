@@ -167,11 +167,14 @@ class Object(object):
         query = "select %s from %s where %s" % (
             self.columns_name(*columns), self.table, cond)
         cursor.execute(query, self.match_value(match))
-        values = cursor.fetchone()
-        if values is None:
+        if cursor.rowcount == 0:
             # TODO: Add a custom exception here
             raise ValueError("Object Not Found")
+        if cursor.rowcount > 1:
+            # TODO: Add a custom exception here
+            raise ValueError("Too many matching object")
         # Store the values
+        values = cursor.fetchone()
         for i, c in enumerate(columns):
             c.set_raw_value(self, values[i])
         self._exists = True
