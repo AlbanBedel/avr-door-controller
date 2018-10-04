@@ -173,14 +173,11 @@ class Controller(APIObject):
     max_acl = DB.Column('MaxACL')
 
     def get_door(self, index):
-        cursor = self._db.cursor()
-        cursor.execute("select DoorID from Doors " +
-                       "where ControllerID = %s and DoorIndex = %s",
-                       (self.id, index))
-        if cursor.rowcount == 0:
+        try:
+            return Door(self._db, (self.id, index),
+                        "ControllerID = %s and DoorIndex = %s")
+        except ValueError:
             raise IndexError("No door with index %s" % index)
-        did, = cursor.fetchone()
-        return Door(self._db, did)
 
 class Door(APIObject):
     table = 'Doors'
