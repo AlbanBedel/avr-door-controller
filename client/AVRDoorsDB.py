@@ -254,6 +254,17 @@ class Door(APIObject):
         a = self.get_access(user, group, pin)
         a.delete()
 
+    def get_user_access(self, user):
+        return AllAccess(self._db, (self.id, user.id),
+                         "DoorID = %s and UserID = %s")
+
+    def is_admin(self, user):
+        try:
+            access = self.get_user_access(user)
+        except ValueError:
+            return False
+        return access.admin
+
 class Access(object):
     def valid(self):
         return (self.since is None or self.since <= datetime.now()) and \
@@ -273,6 +284,8 @@ class Access(object):
                 desc += ", expired since %s" % self.until
             else:
                 desc += ", until %s" % self.until
+        if self.admin:
+            desc += " (ADMIN)"
         return desc
 
     def describe_to(self):
@@ -289,6 +302,7 @@ class AllAccess(DB.Object, Access):
     pin = DB.Column('PIN', index = True)
     since = DB.Column('Since')
     until = DB.Column('Until')
+    admin = DB.Column('DoorAdmin')
 
 class DoorAccess(APIObject, Access):
     table = 'DoorAccess'

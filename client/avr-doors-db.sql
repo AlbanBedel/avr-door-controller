@@ -109,13 +109,13 @@ create table if not exists ControllerSetACL (
 
 -- All explicit access record for users
 create or replace view UserAccess as
-	select DoorID, UserID, PIN, Since, Until
+	select DoorID, UserID, PIN, Since, Until, DoorAdmin
 	from DoorAccess
 	where GroupID is null;
 
 -- All access records generated from the groups
 create or replace view GroupAccess as
-	select DoorID, GroupUsers.UserID, PIN, Since, Until
+	select DoorID, GroupUsers.UserID, PIN, Since, Until, DoorAdmin
 	from DoorAccess
 	join GroupUsers on DoorAccess.GroupID = GroupUsers.GroupID;
 
@@ -125,7 +125,8 @@ create or replace view AllAccess as
 	select * from UserAccess
 	union all
 	(select GroupAccess.DoorID, GroupAccess.UserID,
-		GroupAccess.PIN, GroupAccess.Since, GroupAccess.Until
+		GroupAccess.PIN, GroupAccess.Since, GroupAccess.Until,
+		GroupAccess.DoorAdmin
 	 from GroupAccess
 	 left join UserAccess
 	 on UserAccess.DoorID = GroupAccess.DoorID and
