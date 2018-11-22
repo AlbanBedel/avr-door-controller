@@ -151,7 +151,7 @@ int avr_door_ctrl_method_handler(
 	req->timeout.cb = avr_door_ctrl_on_request_timeout;
 	blob_buf_init(&req->bbuf, 0);
 
-	/* Write the contorl request */
+	/* Write the control request */
 	req->msg.type = method->cmd;
 	req->msg.length = method->query_size;
 
