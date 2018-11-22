@@ -1,5 +1,5 @@
 
-BOARD=arduino_nano_v2
+BOARD=arduino_nano_v3
 include config.mk
 
 CROSS_COMPILE=avr-
