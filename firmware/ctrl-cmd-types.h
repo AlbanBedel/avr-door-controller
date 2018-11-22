@@ -53,6 +53,10 @@ struct ctrl_msg {
  */
 #define CTRL_CMD_GET_ACCESS		24
 
+/* Input:  struct ctrl_cmd_get_unused_access
+ * Output: struct ctrl_cmd_resp_unused_access
+ */
+#define CTRL_CMD_GET_UNUSED_ACCESS	25
 
 /* Payload depend on the query */
 #define CTRL_CMD_OK			0
@@ -90,6 +94,16 @@ struct ctrl_cmd_get_access_record {
 struct ctrl_cmd_set_access_record {
 	uint16_t index;
 	struct access_record record;
+} PACKED;
+
+struct ctrl_cmd_get_unused_access {
+	uint16_t start;
+	uint8_t clear;
+} PACKED;
+
+struct ctrl_cmd_resp_unused_access {
+	struct access_record record;
+	uint16_t next;
 } PACKED;
 
 #endif /* CTRL_CMD_TYPES_H */
