@@ -46,6 +46,9 @@ struct avr_door_ctrl_method {
 	/* Convert a controller response to a ubus one */
 	int (*read_response)(const void *response, struct blob_buf *bbuf);
 	unsigned int response_size;
+
+	/* Write a follow up query based on the response */
+	int (*write_continue_query)(const void *response, void *query);
 };
 
 int avr_door_ctrl_method_handler(

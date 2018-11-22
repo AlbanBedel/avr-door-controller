@@ -174,6 +174,25 @@ int avr_door_ctrl_method_handler(
 	return 0;
 }
 
+static int avr_door_ctrl_continue_request(struct avr_door_ctrl *ctrl)
+{
+	struct avr_door_ctrl_request *req = ctrl->req;
+	int err;
+
+	/* Check that the method do support continuing the request */
+	if (!method->write_continue_query)
+		return -EBADE;
+
+	/* Update the request according to the response */
+	err = method->write_continue_query(ctrl->msg.payload, req->msg.payload);
+	if (err)
+		return err;
+
+	/* Add the fd to the writer list */
+	uloop_fd_add(&ctrl->fd, ctrl->fd.flags | ULOOP_WRITE);
+	return 0;
+}
+
 static void avr_door_ctrl_recv_msg(
 	struct avr_door_ctrl *ctrl, struct avr_door_ctrl_msg *msg)
 {
@@ -201,8 +220,14 @@ static void avr_door_ctrl_recv_msg(
 		goto complete_request;
 	}
 
-	if (req->method->read_response)
+	if (req->method->read_response) {
 		err = req->method->read_response(msg->payload, &req->bbuf);
+		if (err == -EAGAIN) {
+			err = avr_door_ctrl_continue_request(ctrl);
+			if (!err)
+				return;
+		}
+	}
 	if (!err)
 		err = ubus_send_reply(ctrl->daemon->uctx,
 				      &req->uresp, req->bbuf.head);
