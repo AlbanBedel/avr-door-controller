@@ -360,6 +360,47 @@ static int write_set_access_query(
 static const struct blobmsg_policy remove_all_access_args[] = {
 };
 
+#define GET_UNUSED_ACCESS_CLEAR		0
+
+static const struct blobmsg_policy get_unused_access_args[] = {
+	[GET_UNUSED_ACCESS_CLEAR] = {
+		.name = "clear",
+		.type = BLOBMSG_TYPE_INT32,
+	},
+};
+
+static int write_get_unused_access_query(
+	struct blob_attr *const *const args,
+	void *query, struct blob_buf *bbuf)
+{
+	struct ctrl_cmd_get_unused_access *get = query;
+
+	if (args[GET_UNUSED_ACCESS_CLEAR])
+		get->clear = blobmsg_get_u32(args[GET_UNUSED_ACCESS_CLEAR]);
+
+	return 0;
+}
+
+static int read_get_unused_access_response(
+	const void *response, struct blob_buf *bbuf)
+{
+	const struct ctrl_cmd_resp_unused_access *unused = response;
+
+	/* TODO: Write the result in an array */
+	return 0;
+}
+
+static int write_get_unused_access_continue_query(
+	const void *response, void *query)
+{
+	const struct ctrl_cmd_resp_unused_access *unused = response;
+	struct ctrl_cmd_get_unused_access *get = query;
+
+	get->start = unused->next;
+
+	return 0;
+}
+
 #define AVR_DOOR_CTRL_METHOD(method, opt_args, cmd_id,			\
 			     wr_query, qr_size, rd_resp, resp_size)	\
 	{								\
