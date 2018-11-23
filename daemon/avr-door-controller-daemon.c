@@ -37,6 +37,7 @@ struct avr_door_ctrl_request {
 	struct uloop_timeout timeout;
 	struct ubus_request_data uresp;
 	struct blob_buf bbuf;
+	void *query_ctx;
 };
 
 struct avr_door_ctrl {
@@ -156,7 +157,8 @@ int avr_door_ctrl_method_handler(
 	req->msg.length = method->query_size;
 
 	if (method->write_query) {
-		err = method->write_query(args, req->msg.payload, &req->bbuf);
+		err = method->write_query(args, req->msg.payload, &req->bbuf,
+					  &req->query_ctx);
 		if (err) {
 			free(req);
 			return err;
@@ -184,7 +186,8 @@ static int avr_door_ctrl_continue_request(struct avr_door_ctrl *ctrl)
 		return -EBADE;
 
 	/* Update the request according to the response */
-	err = req->method->write_continue_query(ctrl->msg.payload, req->msg.payload);
+	err = req->method->write_continue_query(
+		ctrl->msg.payload, req->msg.payload, req->query_ctx);
 	if (err)
 		return err;
 
@@ -221,7 +224,8 @@ static void avr_door_ctrl_recv_msg(
 	}
 
 	if (req->method->read_response) {
-		err = req->method->read_response(msg->payload, &req->bbuf);
+		err = req->method->read_response(msg->payload, &req->bbuf,
+						 req->query_ctx);
 		if (err == -EAGAIN) {
 			err = avr_door_ctrl_continue_request(ctrl);
 			if (!err)

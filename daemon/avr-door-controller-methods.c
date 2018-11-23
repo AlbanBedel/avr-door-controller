@@ -48,7 +48,7 @@ static const struct blobmsg_policy get_device_descriptor_args[] = {
 };
 
 static int read_get_device_descriptor_response(
-	const void *response, struct blob_buf *bbuf)
+	const void *response, struct blob_buf *bbuf, void *ctx)
 {
 	const struct device_descriptor *desc = response;
 
@@ -71,7 +71,7 @@ static const struct blobmsg_policy get_door_config_args[] = {
 
 static int write_get_door_config_query(
 	struct blob_attr *const *const args,
-	void *query, struct blob_buf *bbuf)
+	void *query, struct blob_buf *bbuf, void **ctx)
 {
 	struct ctrl_cmd_get_door_config *cmd = query;
 
@@ -81,7 +81,7 @@ static int write_get_door_config_query(
 }
 
 static int read_get_door_config_response(
-	const void *response, struct blob_buf *bbuf)
+	const void *response, struct blob_buf *bbuf, void *ctx)
 {
 	const struct door_config *cfg = (struct door_config *)response;
 
@@ -105,7 +105,7 @@ static const struct blobmsg_policy set_door_config_args[] = {
 
 static int write_set_door_config_query(
 	struct blob_attr *const *const args,
-	void *query, struct blob_buf *bbuf)
+	void *query, struct blob_buf *bbuf, void **ctx)
 {
 	struct ctrl_cmd_set_door_config *cmd = query;
 
@@ -138,7 +138,7 @@ static const struct blobmsg_policy get_access_record_args[] = {
 
 static int write_get_access_record_query(
 	struct blob_attr *const *const args,
-	void *query, struct blob_buf *bbuf)
+	void *query, struct blob_buf *bbuf, void **ctx)
 {
 	struct ctrl_cmd_get_access_record *cmd = query;
 
@@ -161,7 +161,7 @@ static int write_get_access_record_query(
 }
 
 static int read_get_access_record_response(
-	const void *response, struct blob_buf *bbuf)
+	const void *response, struct blob_buf *bbuf, void *ctx)
 {
 	const struct access_record *rec = (struct access_record *)response;
 	struct blob_attr *args[ARRAY_SIZE(get_access_record_args)] = {};
@@ -248,7 +248,7 @@ static const struct blobmsg_policy set_access_record_args[] = {
 
 static int write_set_access_record_query(
 	struct blob_attr *const *const args,
-	void *query, struct blob_buf *bbuf)
+	void *query, struct blob_buf *bbuf, void **ctx)
 {
 	struct ctrl_cmd_set_access_record *cmd = query;
 	uint32_t card = 0, pin = 0;
@@ -320,7 +320,7 @@ static const struct blobmsg_policy set_access_args[] = {
 
 static int write_set_access_query(
 	struct blob_attr *const *const args,
-	void *query, struct blob_buf *bbuf)
+	void *query, struct blob_buf *bbuf, void **ctx)
 {
 	struct access_record *rec = query;
 	uint32_t card = 0, pin = 0;
