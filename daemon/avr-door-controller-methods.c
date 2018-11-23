@@ -44,6 +44,55 @@ static int pin_from_str(uint32_t *pin, const char *str)
 	return 0;
 }
 
+static int blobmsg_add_access_record(
+	struct blob_buf *bbuf, const struct access_record *rec,
+	uint32_t *card, const char *str_pin)
+{
+	uint8_t perms, type, doors;
+	uint32_t key;
+	char pin[9];
+
+	/* The bit fields are broken with Chaos Calmer MIPS compiler */
+	perms = ((uint8_t*)rec)[4];
+	key = le32toh(rec->key);
+
+	/* If the record is invalid ignore it */
+	if (perms & BIT(2))
+		perms = 0;
+
+	type = perms & 0x3;
+	doors = perms >> 4;
+
+	if (type != ACCESS_TYPE_NONE)
+		blobmsg_add_u32(bbuf, "doors", doors);
+
+	switch (type) {
+	case ACCESS_TYPE_PIN:
+		pin_to_str(key, pin);
+		blobmsg_add_string(bbuf, "pin", pin);
+		break;
+	case ACCESS_TYPE_CARD:
+		blobmsg_add_u32(bbuf, "card", key);
+		break;
+	case ACCESS_TYPE_CARD_AND_PIN:
+		if (str_pin) {
+			uint32_t p;
+
+			if (pin_from_str(&p, str_pin))
+				return UBUS_STATUS_INVALID_ARGUMENT;
+			blobmsg_add_u32(bbuf, "card", key ^ p);
+		} else if (card) {
+			pin_to_str(key ^ *card, pin);
+			blobmsg_add_string(bbuf, "pin", pin);
+		} else {
+			blobmsg_add_u32(bbuf, "card+pin", key);
+		}
+		break;
+	}
+
+	return 0;
+}
+
 static const struct blobmsg_policy get_device_descriptor_args[] = {
 };
 
@@ -165,56 +214,18 @@ static int read_get_access_record_response(
 {
 	const struct access_record *rec = (struct access_record *)response;
 	struct blob_attr *args[ARRAY_SIZE(get_access_record_args)] = {};
-	uint8_t perms, type, doors;
-	char *str_pin;
-	uint32_t key;
-	char pin[9];
+	const char *pin;
+	uint32_t card;
 
-	/* The bit fields are broken with Chaos Calmer MIPS compiler */
-	perms = ((uint8_t*)rec)[4];
-	key = le32toh(rec->key);
+	blobmsg_parse(get_access_record_args,
+		      ARRAY_SIZE(get_access_record_args), args,
+		      blob_data(bbuf->head), blob_len(bbuf->head));
+	pin = blobmsg_get_string(args[GET_ACCESS_RECORD_PIN]);
+	if (args[GET_ACCESS_RECORD_CARD])
+		card = blobmsg_get_u32(args[GET_ACCESS_RECORD_CARD]);
 
-	/* If the record is invalid ignore it */
-	if (perms & BIT(2))
-		perms = 0;
-
-	type = perms & 0x3;
-	doors = perms >> 4;
-
-	if (type != ACCESS_TYPE_NONE)
-		blobmsg_add_u32(bbuf, "doors", doors);
-
-	switch (type) {
-	case ACCESS_TYPE_PIN:
-		pin_to_str(key, pin);
-		blobmsg_add_string(bbuf, "pin", pin);
-		break;
-	case ACCESS_TYPE_CARD:
-		blobmsg_add_u32(bbuf, "card", key);
-		break;
-	case ACCESS_TYPE_CARD_AND_PIN:
-		blobmsg_parse(get_access_record_args,
-			      ARRAY_SIZE(get_access_record_args), args,
-			      blob_data(bbuf->head), blob_len(bbuf->head));
-		str_pin = blobmsg_get_string(args[GET_ACCESS_RECORD_PIN]);
-		if (str_pin) {
-			uint32_t p;
-
-			if (pin_from_str(&p, str_pin))
-				return UBUS_STATUS_INVALID_ARGUMENT;
-			blobmsg_add_u32(bbuf, "card", key ^ p);
-		} else if (args[GET_ACCESS_RECORD_CARD]) {
-			uint32_t card = blobmsg_get_u32(args[GET_ACCESS_RECORD_CARD]);
-
-			pin_to_str(key ^ card, pin);
-			blobmsg_add_string(bbuf, "pin", pin);
-		} else {
-			blobmsg_add_u32(bbuf, "card+pin", key);
-		}
-		break;
-	}
-
-	return 0;
+	return blobmsg_add_access_record(
+		bbuf, rec, args[GET_ACCESS_RECORD_CARD] ? &card : NULL, pin);
 }
 
 #define SET_ACCESS_RECORD_INDEX		0
