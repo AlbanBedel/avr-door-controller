@@ -46,7 +46,7 @@ static int pin_from_str(uint32_t *pin, const char *str)
 
 static int blobmsg_add_access_record(
 	struct blob_buf *bbuf, const struct access_record *rec,
-	uint32_t *card, const char *str_pin)
+	uint32_t *card, const char *str_pin, bool show_used)
 {
 	uint8_t perms, type, doors;
 	uint32_t key;
@@ -63,8 +63,11 @@ static int blobmsg_add_access_record(
 	type = perms & 0x3;
 	doors = perms >> 4;
 
-	if (type != ACCESS_TYPE_NONE)
+	if (type != ACCESS_TYPE_NONE) {
 		blobmsg_add_u32(bbuf, "doors", doors);
+		if (show_used)
+			blobmsg_add_u32(bbuf, "used", perms & BIT(3));
+	}
 
 	switch (type) {
 	case ACCESS_TYPE_PIN:
@@ -225,7 +228,8 @@ static int read_get_access_record_response(
 		card = blobmsg_get_u32(args[GET_ACCESS_RECORD_CARD]);
 
 	return blobmsg_add_access_record(
-		bbuf, rec, args[GET_ACCESS_RECORD_CARD] ? &card : NULL, pin);
+		bbuf, rec, args[GET_ACCESS_RECORD_CARD] ? &card : NULL,
+		pin, true);
 }
 
 #define SET_ACCESS_RECORD_INDEX		0
@@ -233,6 +237,7 @@ static int read_get_access_record_response(
 #define SET_ACCESS_RECORD_CARD		2
 #define SET_ACCESS_RECORD_CARD_N_PIN	3
 #define SET_ACCESS_RECORD_DOORS		4
+#define SET_ACCESS_RECORD_USED		5
 
 static const struct blobmsg_policy set_access_record_args[] = {
 	[SET_ACCESS_RECORD_INDEX] = {
@@ -255,6 +260,10 @@ static const struct blobmsg_policy set_access_record_args[] = {
 		.name = "doors",
 		.type = BLOBMSG_TYPE_INT32,
 	},
+	[SET_ACCESS_RECORD_USED] = {
+		.name = "used",
+		.type = BLOBMSG_TYPE_INT32,
+	},
 };
 
 static int write_set_access_record_query(
@@ -262,7 +271,7 @@ static int write_set_access_record_query(
 	void *query, struct blob_buf *bbuf, void **ctx)
 {
 	struct ctrl_cmd_set_access_record *cmd = query;
-	uint32_t card = 0, pin = 0;
+	uint32_t card = 0, pin = 0, used = 0;
 	uint8_t doors = 0;
 	char *str_pin;
 	uint8_t type;
@@ -276,6 +285,8 @@ static int write_set_access_record_query(
 		card = blobmsg_get_u32(args[SET_ACCESS_RECORD_CARD_N_PIN]);
 	if (args[SET_ACCESS_RECORD_DOORS])
 		doors = blobmsg_get_u32(args[SET_ACCESS_RECORD_DOORS]) & 0xF;
+	if (args[SET_ACCESS_RECORD_USED])
+		used = !!blobmsg_get_u32(args[SET_ACCESS_RECORD_USED]);
 
 	if (args[SET_ACCESS_RECORD_CARD_N_PIN] ||
 	    (args[SET_ACCESS_RECORD_CARD] && str_pin))
@@ -305,7 +316,7 @@ static int write_set_access_record_query(
 	}
 
 	cmd->record.key = htole32(card ^ pin);
-	((uint8_t*)&cmd->record)[4] = (doors << 4) | type;
+	((uint8_t*)&cmd->record)[4] = (doors << 4) | (used << 3) | type;
 
 	return 0;
 }
@@ -426,7 +437,7 @@ static int read_get_used_access_response(
 
 		err = blobmsg_add_u32(bbuf, "index", le16toh(used->index));
 		err = blobmsg_add_access_record(
-			bbuf, &used->record, NULL, NULL);
+			bbuf, &used->record, NULL, NULL, false);
 		if (err) {
 			blobmsg_close_array(bbuf, ctx);
 			return err;
@@ -500,7 +511,8 @@ const struct avr_door_ctrl_method avr_door_ctrl_methods[] = {
 		BIT(SET_ACCESS_RECORD_PIN) |
 		BIT(SET_ACCESS_RECORD_CARD) |
 		BIT(SET_ACCESS_RECORD_CARD_N_PIN) |
-		BIT(SET_ACCESS_RECORD_DOORS),
+		BIT(SET_ACCESS_RECORD_DOORS) |
+		BIT(SET_ACCESS_RECORD_USED),
 		CTRL_CMD_SET_ACCESS_RECORD,
 		write_set_access_record_query,
 		sizeof(struct ctrl_cmd_set_access_record),
