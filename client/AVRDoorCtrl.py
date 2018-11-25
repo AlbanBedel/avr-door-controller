@@ -241,6 +241,7 @@ class AVRDoorCtrlSerialHandler(object):
         doors = (access >> 4) & 0xF
         ret = {
             "index": index,
+            "used": bool(access & (1 << 3)),
         }
         if type != self.ACCESS_TYPE_NONE:
             ret['doors'] = doors
@@ -261,7 +262,7 @@ class AVRDoorCtrlSerialHandler(object):
 
     @classmethod
     def _pack_access_record(self, pin = None, card = None,
-                            doors = 0, card_pin = None):
+                            doors = 0, used = False, card_pin = None):
         if card_pin != None:
             type = self.ACCESS_TYPE_CARD_AND_PIN
             key = int(card_pin)
@@ -277,13 +278,13 @@ class AVRDoorCtrlSerialHandler(object):
         else:
             type = self.ACCESS_TYPE_NONE
             key = 0
-        access = type | ((int(doors) & 0xF) << 4)
+        access = type | ((bool(int(used)) & 1) << 3) | ((int(doors) & 0xF) << 4)
         return struct.pack("<LB", key, access)
 
     def set_access_record(self, index, pin = None, card = None,
-                          doors = 0, **kwargs):
+                          used = False, doors = 0, **kwargs):
         req = struct.pack("<H", index)
-        req += self._pack_access_record(pin, card, doors,
+        req += self._pack_access_record(pin, card, doors, used,
                                         kwargs.get('card+pin'))
         self.send_cmd(self.CMD_SET_ACCESS_RECORD, req, 0)
         return {}
@@ -336,7 +337,8 @@ class AVRDoorCtrlUbusHandler(ubus.UObject):
 
     @ubus.method
     def set_access_record(self, index: int, pin: str = None,
-                          card: int = None, doors: int = 0):
+                          card: int = None, used: bool = False,
+                          doors: int = 0):
         pass
 
     @ubus.method
@@ -460,6 +462,8 @@ if __name__ == '__main__':
         '--card', type = int, help = 'Card number')
     method_parser.add_argument(
         '--pin', help = 'PIN with 1 to 8 digits')
+    method_parser.add_argument(
+        '--used', action='store_true', help = 'Mark the record as used')
     method_parser.add_argument(
         '--doors', type = int, required = True,
         help = 'Bitmask of the doors that can be opened')
