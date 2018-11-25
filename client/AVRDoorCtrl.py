@@ -132,6 +132,7 @@ class AVRDoorCtrlSerialHandler(object):
     CMD_SET_ACCESS = 22
     CMD_REMOVE_ALL_ACCESS = 23
     CMD_GET_ACCESS = 24
+    CMD_GET_USED_ACCESS = 25
 
     EVENT_BASE = 127
     EVENT_STARTED = EVENT_BASE + 0
@@ -314,6 +315,24 @@ class AVRDoorCtrlSerialHandler(object):
         self.send_cmd(self.CMD_REMOVE_ALL_ACCESS)
         return {}
 
+    def _generate_used_access(self, clear):
+        i = 0
+        while True:
+            req = struct.pack("<HB", int(i), clear)
+            response = self.send_cmd(self.CMD_GET_USED_ACCESS, req, 7)
+            i, = struct.unpack("<H", response[0:2])
+            rec = self._unpack_access_record(response[2:])
+            if 'doors' not in rec:
+                return
+            rec['index'] = i
+            yield rec
+            i = i + 1
+
+    def get_used_access(self, clear = False):
+        return {
+            'used': list(self._generate_used_access(clear)),
+        }
+
 class AVRDoorCtrlUbusHandler(ubus.UObject):
     def __init__(self, url, username, password,
                  uobject = None, **ubus_kwargs):
@@ -356,6 +375,10 @@ class AVRDoorCtrlUbusHandler(ubus.UObject):
 
     @ubus.method
     def remove_all_access(self):
+        pass
+
+    @ubus.method
+    def get_used_access(self, clear: int = 0):
         pass
 
 class AVRDoorCtrl(object):
@@ -489,6 +512,13 @@ if __name__ == '__main__':
         '--card', type = int, help = 'Card number')
     method_parser.add_argument(
         '--pin', help = 'PIN with 1 to 8 digits')
+
+    method_parser = method_subparsers.add_parser(
+        'get_used_access',
+        help = 'Get all the used access records')
+    method_parser.add_argument(
+        '--clear', action='store_true',
+        help = 'Clear the used flags while going through the records')
 
     method_parser = method_subparsers.add_parser(
         'remove_all_access', help = 'Erase all access records')
