@@ -230,9 +230,8 @@ class AVRDoorCtrlSerialHandler(object):
         self.send_cmd(self.CMD_SET_DOOR_CONFIG, req)
         return {}
 
-    def get_access_record(self, index, pin = None, card = None):
-        response = self.send_cmd(self.CMD_GET_ACCESS_RECORD,
-                                 struct.pack("<H", int(index)), 5)
+    @classmethod
+    def _unpack_access_record(self, response, pin = None, card = None):
         key, access = struct.unpack("<LB", response[0:5])
         # If the record is invalid ignore it
         if access & (1 << 2):
@@ -240,7 +239,6 @@ class AVRDoorCtrlSerialHandler(object):
         type = access & 0x3
         doors = (access >> 4) & 0xF
         ret = {
-            "index": index,
             "used": bool(access & (1 << 3)),
         }
         if type != self.ACCESS_TYPE_NONE:
@@ -258,6 +256,13 @@ class AVRDoorCtrlSerialHandler(object):
                 ret['card'] = card
             else:
                 ret['card+pin'] = key
+        return ret
+
+    def get_access_record(self, index, pin = None, card = None):
+        response = self.send_cmd(self.CMD_GET_ACCESS_RECORD,
+                                 struct.pack("<H", int(index)), 5)
+        ret = self._unpack_access_record(response, pin, card)
+        ret['index'] = index
         return ret
 
     @classmethod
