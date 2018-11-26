@@ -318,6 +318,12 @@ class AVRDoorCtrlUbusHandler(ubus.UObject):
         bus = ubus.UBus(url, username, password, **ubus_kwargs)
         super(AVRDoorCtrlUbusHandler, self).__init__(bus, uobject)
 
+    @staticmethod
+    def _fix_card_n_pin(rec):
+        if 'card+pin' in rec and rec['card+pin'] < 0:
+            rec['card+pin'] = struct.unpack(
+                    '<L', struct.pack('<l', rec['card+pin']))
+
     @ubus.method
     def get_device_descriptor(self):
         pass
@@ -332,7 +338,9 @@ class AVRDoorCtrlUbusHandler(ubus.UObject):
 
     @ubus.method
     def get_access_record(self, index: int):
-        pass
+        rec = self.call('get_access_record', index = index)
+        self._fix_card_n_pin(rec)
+        return rec
 
     @ubus.method
     def set_access_record(self, index: int, pin: str = None,
@@ -350,6 +358,13 @@ class AVRDoorCtrlUbusHandler(ubus.UObject):
     @ubus.method
     def remove_all_access(self):
         pass
+
+    @ubus.method
+    def get_unused_access(self, clear_used: bool = False):
+        resp = self.call('get_unused_access', clear_used = clear_used)
+        for unused in resp['unused']:
+            self._fix_card_n_pin(unused)
+        return resp
 
 class AVRDoorCtrl(object):
     """
