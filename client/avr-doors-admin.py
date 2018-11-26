@@ -131,6 +131,53 @@ class Controller(AVRDoorsDB.Controller):
                 op = "Added" if add else "Removed"
                 print("\t* %s %s" % (op, who))
 
+    def update_last_used(self, dry_run = False):
+        # Get all the records and split them on type
+        unused = self.get_unused_access(not(dry_run))
+        unused_pin = {}
+        unused_card = {}
+        unused_card_n_pin = {}
+        for rec in unused['unused']:
+            if 'card+pin' in rec:
+                unused_card_n_pin[rec['card+pin']] = True
+            elif 'card' in rec:
+                unused_card[rec['card']] = True
+            elif 'pin' in rec:
+                unused_pin[rec['pin']] = True
+            else:
+                raise ValueError('Bad unused record: %s' % rec)
+        # Get all the records set on this controller
+        cursor = self._db.cursor()
+        cursor.execute(
+            "select Card, PIN from ControllerSetACL where ControllerID = %s",
+            (self.id,))
+        # And create a list of all the records
+        # that are not in the unused lists
+        used = []
+        for card, pin in cursor:
+            if card is not None and pin is not None:
+                card_n_pin = AVRDoorCtrl.card_n_pin(card, pin)
+                if card_n_pin not in unused_card_n_pin:
+                    used.append((self.id, card, pin))
+            elif card is not None:
+                if card not in unused_card:
+                    used.append((self.id, card, pin))
+            elif pin is not None:
+                if pin not in unused_pin:
+                    used.append((self.id, card, pin))
+        # Update the LastUsed date on all used records
+        if not(dry_run):
+            cursor.executemany(
+                "update ControllerSetACL set LastUsedCheck = now() " +
+                "where ControllerID = %s and Card <=> %s and PIN <=> %s",
+                used)
+            cursor.execute(
+                "update Controllers set LastUseCheck = now() " +
+                "where ControllerID = %s", (self.id,))
+            self._db.commit()
+        print("%d records marked as used on %s controller" %
+              (len(used), self.location))
+
 class Actions(object):
     def __init__(self, db):
         self.db = db
@@ -370,6 +417,12 @@ class ControllerActions(Actions):
         # Update all devices
         for ctrl in self.patched_devices(devices, override):
             ctrl.update_acl(reset, dry_run)
+
+    def update_last_used(self, devices, override, dry_run):
+        if len(devices) == 0:
+            devices = [d.id for d in self.cls.get_all(self.db)]
+        for ctrl in self.patched_devices(devices, override):
+            ctrl.update_last_used(dry_run)
 
 class DoorActions(Actions):
     cls = AVRDoorsDB.Door
