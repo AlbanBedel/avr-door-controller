@@ -55,7 +55,8 @@ create table if not exists Controllers (
 	Username char(64),
 	Password char(128),
 	Firmware char(64),
-	MaxACL int unsigned
+	MaxACL int unsigned,
+	LastUseCheck datetime
 );
 
 create table if not exists Doors (
@@ -99,11 +100,20 @@ create table if not exists ControllerSetACL (
 	Card int unsigned,
 	PIN char(8),
 	Doors int unsigned not null,
+	LastUsedCheck datetime not null default current_timestamp,
 
 	foreign key (ControllerID) references Controllers(ControllerID)
 		on update cascade on delete cascade,
 	unique key(ControllerID, Card, PIN)
 );
+
+create or replace view ControllerUnusedACL as
+	select ControllerSetACL.ControllerID, Card, PIN,
+	       timediff(LastUseCheck, LastUsedCheck) as UnusedTime
+	from ControllerSetACL
+	join Controllers on ControllerSetACL.ControllerID = Controllers.ControllerID
+	where Controllers.LastUseCheck is not null;
+
 -- BUG: The unique key(ControllerID, Card, PIN) doesn't work as NULL is
 --      treated as unknown, so there can be multiple 'A NULL B' entries.
 -- TODO: Add a trigger that check for this constraint using <=> as comparator.
