@@ -243,15 +243,16 @@ class UserActions(Actions):
     cls = AVRDoorsDB.User
 
     def print_list_header(self):
-        print(" %-4s | %-30s | %-40s | %-10s | %s" %
-              ("UID", "Username", "EMail", "Card", "Groups"))
-        print("-" * 6 + "+" + "-" * 32 + "+" + "-" * 42 + "+" + "-" * 20)
+        print(" %-4s | %-30s | %-40s | %-10s | %-6s | %s" %
+              ("UID", "Username", "EMail", "Card", "Active", "Groups"))
+        print("-" * 6 + "+" + "-" * 32 + "+" + "-" * 42 + "+" +
+              "-" * 12 + "+" + "-" * 8 + "+" + "-" * 20)
 
     def print_list_entry(self, u):
         email = u.email if u.email is not None else ''
         groups = ", ".join((gu.group.name for gu in u.groups))
-        print("% 5d | %-30s | %-40s | %10s | %s" %
-              (u.id, u.name, email, u.card, groups))
+        print("% 5d | %-30s | %-40s | %10s | %-6s | %s" %
+              (u.id, u.name, email, u.card, u.active, groups))
 
     def show_instance(self, user):
         print("User ID:\t%d" % user.id)
@@ -262,6 +263,7 @@ class UserActions(Actions):
             print("EMail:\t\t%s" % user.email)
         if user.card is not None:
             print("Card:\t\t%s" % user.card)
+        print("Active:\t\t%s" % user.active)
         print("Created On:\t%s" % user.created_on)
         print("Last Modified:\t%s" % user.last_modified)
         if len(user.groups) > 0:
@@ -499,6 +501,12 @@ if __name__ == '__main__':
     subparser.add_argument(
         '--delete-card', action = 'store_true',
         help = 'Delete the card of the user')
+    subparser.add_argument(
+        '--enable', action = 'store_true', dest = 'active',
+        help = 'Set the user as active')
+    subparser.add_argument(
+        '--disable', action = 'store_false', dest = 'active',
+        help = 'Set the user as inactive')
 
     # Remove a user
     subparser = action_subparsers.add_parser(

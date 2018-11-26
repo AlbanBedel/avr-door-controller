@@ -33,6 +33,7 @@ class User(APIObject):
     phone = DB.Column('Phone')
     card = DB.Column('Card')
     password = DB.Column('Password')
+    active = DB.Column('Active', DB.Bool)
 
     def __str__(self):
         email = ' <%s>' % self.email if self.email is not None else ''

@@ -16,7 +16,8 @@ create table if not exists Users (
 	Phone char(64),
 	-- allow null to support users who lost their card
 	-- without removing their permissions
-	Card int unsigned unique
+	Card int unsigned unique,
+	Active boolean default true
 );
 
 create table if not exists Groups (
@@ -140,7 +141,8 @@ create or replace view ControllerACL as
 	left join Users on (AllAccess.UserID = Users.UserID)
 	join Doors on (AllAccess.DoorID = Doors.DoorID)
 	where ControllerID is not null and DoorIndex is not null
-	  and (Card is not null -- Users with a card or PIN only
+	  -- Active users with a card or PIN only
+	  and ((Card is not null and Active = true)
 	       or (AllAccess.UserID is null and PIN is not null))
 	  and (Since is null or Since <= now())
 	  and (Until is null or Until > now())
