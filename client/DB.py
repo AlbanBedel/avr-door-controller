@@ -1,4 +1,23 @@
 
+class Bool(object):
+    @staticmethod
+    def encode(dbobj, val):
+        # Accept strings or integer
+        if isinstance(val, str):
+            if val.lower() in ['true', 't', 'yes', 'y']:
+                return True
+            elif val.lower() in ['false', 'f', 'no', 'n']:
+                return False
+            try:
+                val = int(val)
+            except ValueError:
+                raise ValueError("invalid boolean value: '%s'" % val)
+        return bool(val)
+
+    @staticmethod
+    def decode(dbobj, val):
+        return bool(val)
+
 class Column(object):
     def __init__(self, name, data_type = None,
                  writable = True, index = False):
