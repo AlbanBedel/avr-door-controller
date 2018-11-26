@@ -424,6 +424,9 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
         self.set_all_access_records(acl)
         return {}
 
+def card_n_pin(card, pin):
+    return card ^ AVRDoorCtrlSerialHandler.pack_pin(pin)
+
 if __name__ == '__main__':
     import binascii, argparse
 
