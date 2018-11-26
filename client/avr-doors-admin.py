@@ -341,8 +341,14 @@ class ControllerActions(Actions):
         c.update_from_device_descriptor()
         self.show_instance(c)
 
-    def update_acl(self, devices, override, reset, dry_run):
-        # Create a patch list from the override arguments
+    def patched_device(self, device, patches):
+        ctrl = self.cls(self.db, device)
+        if ctrl.id in patches:
+            for prop in patches[ctrl.id]:
+                setattr(ctrl, prop, patches[ctrl.id][prop])
+        return ctrl
+
+    def patched_devices(self, devices, overrride):
         patches = {}
         if override != None:
             for ctrl, prop, val in override:
@@ -350,6 +356,9 @@ class ControllerActions(Actions):
                 if ctrl.id not in patches:
                     patches[ctrl.id] = {}
                 patches[ctrl.id][prop] = val
+        return (self.patched_device(d, patches) for d in devices)
+
+    def update_acl(self, devices, override, reset, dry_run):
         # Get the devices to update if none was given
         if len(devices) == 0:
             cursor = self.db.cursor()
@@ -359,11 +368,7 @@ class ControllerActions(Actions):
             for cid, in cursor:
                 devices.append(cid)
         # Update all devices
-        for d in devices:
-            ctrl = self.cls(self.db, d)
-            if ctrl.id in patches:
-                for prop in patches[ctrl.id]:
-                    setattr(ctrl, prop, patches[ctrl.id][prop])
+        for ctrl in self.patched_devices(devices, override):
             ctrl.update_acl(reset, dry_run)
 
 class DoorActions(Actions):
