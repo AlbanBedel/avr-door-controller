@@ -53,6 +53,9 @@ class UObject(object):
             path += '.' + obj
         return self._ubus.list(path)
 
+    def call(self, method, **params):
+        return self._ubus.call(self._path, method, **params)
+
 class UBus(object):
     def __init__(self, url, username=None, password=None,
                  timeout=300, ssl_context=None):
