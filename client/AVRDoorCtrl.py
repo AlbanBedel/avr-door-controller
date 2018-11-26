@@ -139,7 +139,7 @@ class AVRDoorCtrlSerialHandler(object):
     REPLY_OK = 0
     REPLY_ERROR = 255
 
-    access_record_types = ("none", "pin", "card", "pin+card")
+    access_record_types = ("none", "pin", "card", "card+pin")
 
     ACCESS_TYPE_NONE = 0
     ACCESS_TYPE_PIN = 1
