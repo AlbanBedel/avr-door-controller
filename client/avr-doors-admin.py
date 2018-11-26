@@ -355,6 +355,14 @@ class UserActions(Actions):
             user.remove_from_group(grp)
         self.show_instance(user)
 
+    def disable_unused(self, since, dry_run = False):
+        where = "Card in (select Card from UnusedCards where UnusedTime > %s)"
+        users = self.cls.get_all(self.db, where = where, cond = (since,))
+        for user in users:
+            print("Disable user %s" % user)
+            user.active = False
+            user.save()
+
 class ControllerActions(Actions):
     cls = Controller
 

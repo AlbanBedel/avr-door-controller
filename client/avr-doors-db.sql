@@ -114,6 +114,12 @@ create or replace view ControllerUnusedACL as
 	join Controllers on ControllerSetACL.ControllerID = Controllers.ControllerID
 	where Controllers.LastUseCheck is not null;
 
+create or replace view UnusedCards as
+	select Card, min(UnusedTime) as UnusedTime
+	from ControllerUnusedACL
+	where Card is not null
+	group by Card;
+
 -- BUG: The unique key(ControllerID, Card, PIN) doesn't work as NULL is
 --      treated as unknown, so there can be multiple 'A NULL B' entries.
 -- TODO: Add a trigger that check for this constraint using <=> as comparator.
