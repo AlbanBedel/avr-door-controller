@@ -360,8 +360,9 @@ static int write_set_access_query(
 static const struct blobmsg_policy remove_all_access_args[] = {
 };
 
-#define AVR_DOOR_CTRL_METHOD(method, opt_args, cmd_id,			\
-			     wr_query, qr_size, rd_resp, resp_size)	\
+#define AVR_DOOR_CTRL_METHOD_FULL(method, opt_args, cmd_id,		\
+				  wr_query, qr_size, wr_cont_query,     \
+				  rd_resp, resp_size)			\
 	{								\
 		.name = #method,					\
 		.args = method ## _args,				\
@@ -372,7 +373,14 @@ static const struct blobmsg_policy remove_all_access_args[] = {
 		.query_size = qr_size,					\
 		.read_response = rd_resp,				\
 		.response_size = resp_size,				\
+		.write_continue_query = wr_cont_query,			\
 	}
+
+#define AVR_DOOR_CTRL_METHOD(method, opt_args, cmd_id,			\
+			     wr_query, qr_size, rd_resp, resp_size)	\
+	AVR_DOOR_CTRL_METHOD_FULL(method, opt_args, cmd_id,		\
+				  wr_query, qr_size, NULL,		\
+				  rd_resp, resp_size)
 
 const struct avr_door_ctrl_method avr_door_ctrl_methods[] = {
 	AVR_DOOR_CTRL_METHOD(
