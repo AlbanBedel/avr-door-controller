@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <avr/eeprom.h>
 #include "eeprom.h"
@@ -26,6 +27,10 @@ int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec)
 		return -ENOENT;
 
 	eeprom_read_block(rec, &config.access[id], sizeof(*rec));
+	/* Normalize invalid records to an empty one */
+	if (rec->invalid)
+		memset(rec, 0, sizeof(*rec));
+
 	return 0;
 }
 
@@ -45,18 +50,11 @@ static int8_t eeprom_find_access_record(uint8_t type, uint32_t key,
 	uint16_t i;
 
 	for (i = 0; i < ARRAY_SIZE(config.access); i++) {
-		eeprom_read_block(rec, &config.access[i], sizeof(*rec));
-		switch (type) {
-		case ACCESS_TYPE_NONE:
-			if (rec->invalid || rec->type == ACCESS_TYPE_NONE)
-				break;
+		eeprom_get_access_record(i, rec);
+		if (rec->type != type)
 			continue;
-		default:
-			if (!rec->invalid &&
-			    rec->type == type && rec->key == key)
-				break;
+		if (type != ACCESS_TYPE_NONE && rec->key != key)
 			continue;
-		}
 		/* found */
 		if (index)
 			*index = i;
