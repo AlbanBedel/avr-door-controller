@@ -23,7 +23,7 @@ uint16_t eeprom_get_free_access_record_count(void)
 int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec)
 {
 	if (id >= ARRAY_SIZE(config.access))
-		return -EINVAL;
+		return -ENOENT;
 
 	eeprom_read_block(rec, &config.access[id], sizeof(*rec));
 	return 0;
@@ -32,7 +32,7 @@ int8_t eeprom_get_access_record(uint16_t id, struct access_record *rec)
 int8_t eeprom_set_access_record(uint16_t id, const struct access_record *rec)
 {
 	if (id >= ARRAY_SIZE(config.access))
-		return -EINVAL;
+		return -ENOENT;
 
 	eeprom_write_block(rec, &config.access[id], sizeof(*rec));
 	return 0;
