@@ -81,14 +81,26 @@ int8_t eeprom_get_access(uint8_t type, uint32_t key, uint8_t *doors)
 
 int8_t eeprom_has_access(uint8_t type, uint32_t key, uint8_t door_id)
 {
-	uint8_t doors;
+	struct access_record rec;
+	uint16_t index;
 	int8_t err;
 
-	err = eeprom_get_access(type, key, &doors);
+	/* Lookup the access record */
+	err = eeprom_find_access_record(type, key, &rec, &index);
 	if (err < 0)
 		return err;
 
-	return (doors & BIT(door_id)) ? 0 : -EPERM;
+	/* Check if this record allow to open the door */
+	if (!(rec.doors & BIT(door_id)))
+		return -EPERM;
+
+	/* Mark the record as used */
+	if (!rec.used) {
+		rec.used = 1;
+		eeprom_set_access_record(index, &rec);
+	}
+
+	return 0;
 }
 
 int8_t eeprom_set_access(uint8_t type, uint32_t key, uint8_t doors)
