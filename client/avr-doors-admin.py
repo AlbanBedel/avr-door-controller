@@ -414,6 +414,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--db-host', metavar = 'HOST', type = str)
     parser.add_argument(
+        '--db-user', metavar = 'USER', type = str)
+    parser.add_argument(
         '--db-password', metavar = 'PASSWORD', type = str)
     main_subparsers = parser.add_subparsers(dest='cls')
 
@@ -850,6 +852,8 @@ if __name__ == '__main__':
     # These arguments can't just be None :/
     if args.db_host is not None:
         db_args['host'] = args.db_host
+    if args.db_user is not None:
+        db_args['user'] = args.db_user
     if args.db_password is not None:
         db_args['passwd'] = args.db_password
 
@@ -858,6 +862,7 @@ if __name__ == '__main__':
     del args.action
     del args.db
     del args.db_host
+    del args.db_user
     del args.db_password
 
     db = dbapi2.connect(**db_args)
