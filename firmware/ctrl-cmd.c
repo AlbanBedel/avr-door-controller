@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <avr/pgmspace.h>
 #include "uart.h"
@@ -126,6 +127,44 @@ static int8_t ctrl_cmd_remove_all_access(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
+static int8_t ctrl_cmd_get_used_access(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct ctrl_cmd_get_used_access *get = payload;
+	struct ctrl_cmd_resp_used_access resp;
+	int8_t err;
+	uint16_t i;
+
+	/* Go through all the records */
+	for (i = get->start ; ; i++) {
+		err = eeprom_get_access_record(i, &resp.record);
+		/* Return an empty record when we reach the end */
+		if (err == -ENOENT) {
+			memset(&resp, 0, sizeof(resp));
+			break;
+		}
+		if (err)
+			return err;
+
+		/* Ignore empty or unused records */
+		if (resp.record.type == ACCESS_TYPE_NONE || !resp.record.used)
+			continue;
+
+		/* Clear the used flag */
+		if (get->clear) {
+			resp.record.used = 0;
+			err = eeprom_set_access_record(i, &resp.record);
+			if (err)
+				return err;
+		}
+
+		resp.index = i;
+		break;
+	}
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &resp, sizeof(resp));
+}
+
 static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 	{
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
@@ -171,6 +210,11 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_REMOVE_ALL_ACCESS,
 		.length  = 0,
 		.handler = ctrl_cmd_remove_all_access,
+	},
+	{
+		.type    = CTRL_CMD_GET_USED_ACCESS,
+		.length  = sizeof(struct ctrl_cmd_get_used_access),
+		.handler = ctrl_cmd_get_used_access,
 	},
 };
 
