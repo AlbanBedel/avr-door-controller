@@ -174,9 +174,10 @@ class Actions(object):
         o.save()
         self.show(o.id)
 
-    def delete(self, identifier):
-        o = self.cls(self.db, identifier)
-        o.delete()
+    def delete(self, identifiers):
+        objs = [self.cls(self.db, i) for i in identifiers]
+        for o in objs:
+            o.delete()
 
 class GroupActions(Actions):
     cls = AVRDoorsDB.Group
@@ -506,7 +507,7 @@ if __name__ == '__main__':
     subparser = action_subparsers.add_parser(
         'delete', help = 'Delete a user')
     subparser.add_argument(
-        'identifier', metavar = 'USER', type = str,
+        'identifiers', metavar = 'USER', type = str, nargs = '+',
         help = 'Name or ID of the user to delete')
 
     # Add a user to some groups
@@ -579,7 +580,7 @@ if __name__ == '__main__':
     subparser = action_subparsers.add_parser(
         'delete', help = 'Delete a group of user')
     subparser.add_argument(
-        'identifier', metavar = 'GROUP', type = str,
+        'identifiers', metavar = 'GROUP', type = str, nargs = '+',
         help = 'Name or ID of the group to delete')
 
     # Add users to a group
@@ -704,7 +705,7 @@ if __name__ == '__main__':
     subparser = action_subparsers.add_parser(
         'delete', help = 'Delete a controller')
     subparser.add_argument(
-        'identifier', metavar = 'CONTROLLER',
+        'identifiers', metavar = 'CONTROLLER', nargs = '+',
         help = 'Location or ID of the controller to delete')
 
     # Update the controllers
@@ -780,7 +781,7 @@ if __name__ == '__main__':
     subparser = action_subparsers.add_parser(
         'delete', help = 'Delete a door')
     subparser.add_argument(
-        'identifier', metavar = 'DOOR', type = str,
+        'identifiers', metavar = 'DOOR', type = str, nargs = '+',
         help = 'Name or ID of the door to delete')
 
     # Add an access record
