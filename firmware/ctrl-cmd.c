@@ -20,7 +20,7 @@ static int8_t ctrl_cmd_get_device_descriptor(
 {
 	struct device_descriptor desc = {
 		.major_version = 0,
-		.minor_version = 1,
+		.minor_version = 2,
 		.num_doors = NUM_DOORS,
 		.num_access_records = NUM_ACCESS_RECORDS,
 		.free_access_records = eeprom_get_free_access_record_count(),
