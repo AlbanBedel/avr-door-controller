@@ -371,6 +371,75 @@ static int write_set_access_query(
 static const struct blobmsg_policy remove_all_access_args[] = {
 };
 
+#define GET_USED_ACCESS_CLEAR	0
+
+static const struct blobmsg_policy get_used_access_args[] = {
+	[GET_USED_ACCESS_CLEAR] = {
+		.name = "clear",
+		.type = BLOBMSG_TYPE_INT32,
+	},
+};
+
+static int write_get_used_access_query(
+	struct blob_attr *const *const args,
+	void *query, struct blob_buf *bbuf, void **ctx)
+{
+	struct ctrl_cmd_get_used_access *get = query;
+	void *cookie;
+
+	if (args[GET_USED_ACCESS_CLEAR])
+		get->clear = !!blobmsg_get_u32(args[GET_USED_ACCESS_CLEAR]);
+
+	cookie = blobmsg_open_array(bbuf, "used");
+	if (cookie == NULL)
+		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	*ctx = cookie;
+	return 0;
+}
+
+static int write_get_used_access_continue_query(
+	const void *response, void *query, void *ctx)
+{
+	const struct ctrl_cmd_resp_used_access *used = response;
+	struct ctrl_cmd_get_used_access *get = query;
+
+	get->start = htole16(le16toh(used->index) + 1);
+
+	return 0;
+}
+
+static int read_get_used_access_response(
+	const void *response, struct blob_buf *bbuf, void *ctx)
+{
+	const struct ctrl_cmd_resp_used_access *used = response;
+
+	if (used->record.type != ACCESS_TYPE_NONE) {
+		void *tbl;
+		int err;
+
+		tbl = blobmsg_open_table(bbuf, NULL);
+		if (tbl == NULL) {
+			blobmsg_close_array(bbuf, ctx);
+			return UBUS_STATUS_UNKNOWN_ERROR;
+		}
+
+		err = blobmsg_add_u32(bbuf, "index", le16toh(used->index));
+		err = blobmsg_add_access_record(
+			bbuf, &used->record, NULL, NULL);
+		if (err) {
+			blobmsg_close_array(bbuf, ctx);
+			return err;
+		}
+
+		blobmsg_close_table(bbuf, tbl);
+		return -EAGAIN;
+	} else {
+		blobmsg_close_array(bbuf, ctx);
+		return 0;
+	}
+}
+
 #define AVR_DOOR_CTRL_METHOD_FULL(method, opt_args, cmd_id,		\
 				  wr_query, qr_size, wr_cont_query,     \
 				  rd_resp, resp_size)			\
@@ -451,6 +520,16 @@ const struct avr_door_ctrl_method avr_door_ctrl_methods[] = {
 		remove_all_access, 0,
 		CTRL_CMD_REMOVE_ALL_ACCESS,
 		NULL, 0, NULL, 0),
+
+	AVR_DOOR_CTRL_METHOD_FULL(
+		get_used_access,
+		BIT(GET_USED_ACCESS_CLEAR),
+		CTRL_CMD_GET_USED_ACCESS,
+		write_get_used_access_query,
+		sizeof(struct ctrl_cmd_get_used_access),
+		write_get_used_access_continue_query,
+		read_get_used_access_response,
+		sizeof(struct ctrl_cmd_resp_used_access)),
 };
 
 const struct avr_door_ctrl_method *avr_door_ctrl_get_method(const char *name)
