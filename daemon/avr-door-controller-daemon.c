@@ -70,6 +70,12 @@ struct avr_door_ctrld {
 	struct list_head ctrls;
 };
 
+static void avr_door_ctrl_start_sending(struct avr_door_ctrl *ctrl)
+{
+	/* Add the fd to the writer list */
+	uloop_fd_add(&ctrl->fd, ctrl->fd.flags | ULOOP_WRITE);
+}
+
 static void avr_door_ctrl_send_next_request(struct avr_door_ctrl *ctrl)
 {
 	/* Destroy the last request */
@@ -88,8 +94,7 @@ static void avr_door_ctrl_send_next_request(struct avr_door_ctrl *ctrl)
 			       struct avr_door_ctrl_request, list);
 	list_del_init(&ctrl->req->list);
 
-	/* Add the fd to the writer list */
-	uloop_fd_add(&ctrl->fd, ctrl->fd.flags | ULOOP_WRITE);
+	avr_door_ctrl_start_sending(ctrl);
 }
 
 static void avr_door_ctrl_complete_request(
@@ -191,8 +196,9 @@ static int avr_door_ctrl_continue_request(struct avr_door_ctrl *ctrl)
 	if (err)
 		return err;
 
-	/* Add the fd to the writer list */
-	uloop_fd_add(&ctrl->fd, ctrl->fd.flags | ULOOP_WRITE);
+	/* Send the updated request */
+	avr_door_ctrl_start_sending(ctrl);
+
 	return 0;
 }
 
