@@ -26,65 +26,12 @@
 
 #define AVR_DOOR_CTRL_REQUEST_TIMEOUT 500
 
-struct avr_door_ctrld;
-struct avr_door_ctrl_request;
-
-struct avr_door_ctrl_request_handlers {
-	int (*on_response)(struct avr_door_ctrl_request *req,
-			   const struct avr_door_ctrl_msg *msg);
-	void (*complete)(struct avr_door_ctrl_request *req, int err);
-	void (*destroy)(struct avr_door_ctrl_request *req);
-};
-
-struct avr_door_ctrl_request {
-	struct list_head list;
-	struct avr_door_ctrl *ctrl;
-	struct avr_door_ctrl_msg msg;
-	struct uloop_timeout timeout;
-	const struct avr_door_ctrl_request_handlers *handlers;
-};
-
-struct avr_door_ctrl_method_request {
-	struct avr_door_ctrl_request req;
-
-	const struct avr_door_ctrl_method *method;
-	struct ubus_context *uctx;
-	struct ubus_request_data uresp;
-	struct blob_buf bbuf;
-	void *query_ctx;
-};
-
-struct avr_door_ctrl {
-	/* Name of this controller object */
-	char name[64];
-	/* List of avr_door_ctrl */
-	struct list_head list;
-	/* Daemon object for this door ctrl */
-	struct avr_door_ctrld *daemon;
-	/* Transport for this controller */
-	struct avr_door_ctrl_transport *transport;
-
-	/* uloop fd for this controller */
-	struct uloop_fd fd;
-	/* uobject representing this controller */
-	struct ubus_object uobject;
-
-	/* Incoming message */
-	struct avr_door_ctrl_msg msg;
-	unsigned int msg_pos;
-
-	/* List of pending requests */
-	struct list_head pending_reqs;
-	/* Request currently processed */
-	struct avr_door_ctrl_request *req;
-};
-
 struct avr_door_ctrld {
 	struct ubus_context *uctx;
 	struct list_head ctrls;
 };
 
-static void avr_door_ctrl_start_sending(struct avr_door_ctrl *ctrl)
+void avr_door_ctrl_start_sending(struct avr_door_ctrl *ctrl)
 {
 	/* Add the fd to the writer list */
 	uloop_fd_add(&ctrl->fd, ctrl->fd.flags | ULOOP_WRITE);
@@ -131,7 +78,7 @@ static void avr_door_ctrl_on_request_timeout(struct uloop_timeout *timeout)
 	avr_door_ctrl_complete_request(req, -ETIMEDOUT);
 }
 
-static void avr_door_ctrl_request_init(
+void avr_door_ctrl_request_init(
 	struct avr_door_ctrl_request *req, struct avr_door_ctrl *ctrl,
 	const struct avr_door_ctrl_request_handlers *handlers,
 	unsigned msg_type, unsigned msg_length)
@@ -143,7 +90,7 @@ static void avr_door_ctrl_request_init(
 	req->msg.length = msg_length;
 }
 
-static void avr_door_ctrl_request_send(struct avr_door_ctrl_request *req)
+void avr_door_ctrl_request_send(struct avr_door_ctrl_request *req)
 {
 	struct avr_door_ctrl *ctrl = req->ctrl;
 
@@ -153,150 +100,6 @@ static void avr_door_ctrl_request_send(struct avr_door_ctrl_request *req)
 	/* Send it out if no request is beeing sent */
 	if (!ctrl->req)
 		avr_door_ctrl_send_next_request(ctrl);
-}
-
-static int avr_door_ctrl_method_continue(
-	struct avr_door_ctrl_method_request *req,
-	const struct avr_door_ctrl_msg *resp) {
-	int err;
-
-	/* Check that the method do support continuing the request */
-	if (!req->method->write_continue_query)
-		return -EBADE;
-
-	/* Update the request according to the response */
-	err = req->method->write_continue_query(
-		resp->payload, req->req.msg.payload, req->query_ctx);
-	if (err)
-		return err;
-
-	/* Send the updated request */
-	avr_door_ctrl_start_sending(req->req.ctrl);
-
-	/* Indicate that the request is still in progress */
-	return -EINPROGRESS;
-}
-
-static int avr_door_ctrl_method_on_response(
-	struct avr_door_ctrl_request *request,
-	const struct avr_door_ctrl_msg *resp) {
-	struct avr_door_ctrl_method_request *req =
-		container_of(request,
-			     struct avr_door_ctrl_method_request, req);
-	int err = 0;
-
-	if (resp->length < req->method->response_size) {
-		fprintf(stderr, "Received too short response\n");
-		return -EINVAL;
-	}
-
-	if (req->method->read_response) {
-		err = req->method->read_response(
-			resp->payload, &req->bbuf, req->query_ctx);
-		if (err == -EAGAIN)
-			return avr_door_ctrl_method_continue(req, resp);
-	}
-
-	if (!err)
-		err = ubus_send_reply(req->uctx, &req->uresp, req->bbuf.head);
-
-	return err;
-}
-
-static void avr_door_ctrl_method_complete(
-	struct avr_door_ctrl_request *request, int err) {
-	struct avr_door_ctrl_method_request *req =
-		container_of(request,
-			     struct avr_door_ctrl_method_request, req);
-	int status
-
-	if (err == 0)
-		status = UBUS_STATUS_OK;
-	else if (err == -ETIMEDOUT)
-		status = UBUS_STATUS_TIMEOUT;
-	else
-		status = UBUS_STATUS_UNKNOWN_ERROR;
-
-	ubus_complete_deferred_request(req->uctx, &req->uresp, status);
-}
-
-static void avr_door_ctrl_method_destroy(struct avr_door_ctrl_request *request)
-{
-	struct avr_door_ctrl_method_request *req =
-		container_of(request,
-			     struct avr_door_ctrl_method_request, req);
-
-	blob_buf_free(&req->bbuf);
-	free(request);
-}
-
-static const
-struct avr_door_ctrl_request_handlers avr_door_ctrl_method_handlers = {
-	.on_response = avr_door_ctrl_method_on_response,
-	.complete = avr_door_ctrl_method_complete,
-	.destroy = avr_door_ctrl_method_destroy,
-};
-
-int avr_door_ctrl_method_handler(
-	struct ubus_context *uctx, struct ubus_object *uobj,
-	struct ubus_request_data *ureq, const char *method_name,
-	struct blob_attr *msg)
-{
-	struct blob_attr *args[AVR_DOOR_CTRL_METHOD_MAX_ARGS];
-	const struct avr_door_ctrl_method *method =
-		avr_door_ctrl_get_method(method_name);
-	struct avr_door_ctrl *ctrl = container_of(
-		uobj, struct avr_door_ctrl, uobject);
-	struct avr_door_ctrl_method_request *req;
-	int i, err;
-
-	if (!method) {
-		// LOG ERROR
-		return UBUS_STATUS_UNKNOWN_ERROR;
-	}
-
-	/* Read the arguments */
-	if (method->num_args > 0) {
-		err = blobmsg_parse(method->args, method->num_args,
-				    args, blob_data(msg), blob_len(msg));
-		if (err) {
-			// LOG ERROR
-			return UBUS_STATUS_INVALID_ARGUMENT;
-		}
-
-		/* Check that all required arguments are there */
-		for (i = 0; i < method->num_args; i++)
-			if (!(method->optional_args & BIT(i)) && !args[i])
-				return UBUS_STATUS_INVALID_ARGUMENT;
-	}
-
-	req = calloc(1, sizeof(*req));
-	if (!req)
-		return UBUS_STATUS_UNKNOWN_ERROR;
-
-	avr_door_ctrl_request_init(
-		&req->req, ctrl, &avr_door_ctrl_method_handlers,
-		method->cmd, method->query_size);
-
-	/* Setup the request */
-	req->uctx = uctx;
-	req->method = method;
-	blob_buf_init(&req->bbuf, 0);
-
-	if (method->write_query) {
-		err = method->write_query(args, req->req.msg.payload,
-					  &req->bbuf, &req->query_ctx);
-		if (err) {
-			free(req);
-			return err;
-		}
-	}
-
-	ubus_defer_request(uctx, ureq, &req->uresp);
-
-	avr_door_ctrl_request_send(&req->req);
-
-	return 0;
 }
 
 static void avr_door_ctrl_recv_msg(

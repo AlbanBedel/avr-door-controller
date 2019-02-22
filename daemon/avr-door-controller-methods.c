@@ -15,6 +15,43 @@
 #include "../firmware/ctrl-cmd-types.h"
 #include <endian.h>
 
+struct avr_door_ctrl_method {
+	/* Ubus side */
+	const char *name;
+	const struct blobmsg_policy *args;
+	unsigned int num_args;
+	/* Bitmask of the optional arguments */
+	unsigned int optional_args;
+
+	/* Controller side */
+	unsigned int cmd;
+
+	/* Convert a ubus query to controller command */
+	int (*write_query)(struct blob_attr *const *const args,
+			   void *query, struct blob_buf *bbuf,
+			   void **query_ctx);
+	unsigned int query_size;
+
+	/* Convert a controller response to a ubus one */
+	int (*read_response)(const void *response, struct blob_buf *bbuf,
+			     void *query_ctx);
+	unsigned int response_size;
+
+	/* Write a follow up query based on the response */
+	int (*write_continue_query)(const void *response, void *query,
+				    void *query_ctx);
+};
+
+struct avr_door_ctrl_method_request {
+	struct avr_door_ctrl_request req;
+
+	const struct avr_door_ctrl_method *method;
+	struct ubus_context *uctx;
+	struct ubus_request_data uresp;
+	struct blob_buf bbuf;
+	void *query_ctx;
+};
+
 static void pin_to_str(uint32_t key, char *pin)
 {
 	int i, j;
@@ -544,7 +581,8 @@ const struct avr_door_ctrl_method avr_door_ctrl_methods[] = {
 		sizeof(struct ctrl_cmd_resp_used_access)),
 };
 
-const struct avr_door_ctrl_method *avr_door_ctrl_get_method(const char *name)
+static const struct avr_door_ctrl_method *
+avr_door_ctrl_get_method(const char *name)
 {
 	int i;
 
@@ -561,6 +599,149 @@ avr_door_ctrl_umethods[ARRAY_SIZE(avr_door_ctrl_methods)] = {};
 static struct ubus_object_type avr_door_ctrl_utype =
 	UBUS_OBJECT_TYPE("door_ctrl", avr_door_ctrl_umethods);
 
+static int avr_door_ctrl_method_continue(
+	struct avr_door_ctrl_method_request *req,
+	const struct avr_door_ctrl_msg *resp) {
+	int err;
+
+	/* Check that the method do support continuing the request */
+	if (!req->method->write_continue_query)
+		return -EBADE;
+
+	/* Update the request according to the response */
+	err = req->method->write_continue_query(
+		resp->payload, req->req.msg.payload, req->query_ctx);
+	if (err)
+		return err;
+
+	/* Send the updated request */
+	avr_door_ctrl_start_sending(req->req.ctrl);
+
+	/* Indicate that the request is still in progress */
+	return -EINPROGRESS;
+}
+
+static int avr_door_ctrl_method_on_response(
+	struct avr_door_ctrl_request *request,
+	const struct avr_door_ctrl_msg *resp) {
+	struct avr_door_ctrl_method_request *req =
+		container_of(request,
+			     struct avr_door_ctrl_method_request, req);
+	int err = 0;
+
+	if (resp->length < req->method->response_size) {
+		fprintf(stderr, "Received too short response\n");
+		return -EINVAL;
+	}
+
+	if (req->method->read_response) {
+		err = req->method->read_response(
+			resp->payload, &req->bbuf, req->query_ctx);
+		if (err == -EAGAIN)
+			return avr_door_ctrl_method_continue(req, resp);
+	}
+
+	if (!err)
+		err = ubus_send_reply(req->uctx, &req->uresp, req->bbuf.head);
+
+	return err;
+}
+
+static void avr_door_ctrl_method_complete(
+	struct avr_door_ctrl_request *request, int err) {
+	struct avr_door_ctrl_method_request *req =
+		container_of(request,
+			     struct avr_door_ctrl_method_request, req);
+	int status;
+
+	if (err == 0)
+		status = UBUS_STATUS_OK;
+	else if (err == -ETIMEDOUT)
+		status = UBUS_STATUS_TIMEOUT;
+	else
+		status = UBUS_STATUS_UNKNOWN_ERROR;
+
+	ubus_complete_deferred_request(req->uctx, &req->uresp, status);
+}
+
+static void avr_door_ctrl_method_destroy(struct avr_door_ctrl_request *request)
+{
+	struct avr_door_ctrl_method_request *req =
+		container_of(request,
+			     struct avr_door_ctrl_method_request, req);
+
+	blob_buf_free(&req->bbuf);
+	free(request);
+}
+
+static const
+struct avr_door_ctrl_request_handlers avr_door_ctrl_method_handlers = {
+	.on_response = avr_door_ctrl_method_on_response,
+	.complete = avr_door_ctrl_method_complete,
+	.destroy = avr_door_ctrl_method_destroy,
+};
+
+static int avr_door_ctrl_method_handler(
+	struct ubus_context *uctx, struct ubus_object *uobj,
+	struct ubus_request_data *ureq, const char *method_name,
+	struct blob_attr *msg)
+{
+	struct blob_attr *args[AVR_DOOR_CTRL_METHOD_MAX_ARGS];
+	const struct avr_door_ctrl_method *method =
+		avr_door_ctrl_get_method(method_name);
+	struct avr_door_ctrl *ctrl = container_of(
+		uobj, struct avr_door_ctrl, uobject);
+	struct avr_door_ctrl_method_request *req;
+	int i, err;
+
+	if (!method) {
+		// LOG ERROR
+		return UBUS_STATUS_UNKNOWN_ERROR;
+	}
+
+	/* Read the arguments */
+	if (method->num_args > 0) {
+		err = blobmsg_parse(method->args, method->num_args,
+				    args, blob_data(msg), blob_len(msg));
+		if (err) {
+			// LOG ERROR
+			return UBUS_STATUS_INVALID_ARGUMENT;
+		}
+
+		/* Check that all required arguments are there */
+		for (i = 0; i < method->num_args; i++)
+			if (!(method->optional_args & BIT(i)) && !args[i])
+				return UBUS_STATUS_INVALID_ARGUMENT;
+	}
+
+	req = calloc(1, sizeof(*req));
+	if (!req)
+		return UBUS_STATUS_UNKNOWN_ERROR;
+
+	avr_door_ctrl_request_init(
+		&req->req, ctrl, &avr_door_ctrl_method_handlers,
+		method->cmd, method->query_size);
+
+	/* Setup the request */
+	req->uctx = uctx;
+	req->method = method;
+	blob_buf_init(&req->bbuf, 0);
+
+	if (method->write_query) {
+		err = method->write_query(args, req->req.msg.payload,
+					  &req->bbuf, &req->query_ctx);
+		if (err) {
+			free(req);
+			return err;
+		}
+	}
+
+	ubus_defer_request(uctx, ureq, &req->uresp);
+
+	avr_door_ctrl_request_send(&req->req);
+
+	return 0;
+}
 
 void avr_door_ctrld_init_door_uobject(
 	const char *name, struct ubus_object *uobj)
