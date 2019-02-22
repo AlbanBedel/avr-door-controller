@@ -100,6 +100,13 @@ static void avr_door_ctrl_send_next_request(struct avr_door_ctrl *ctrl)
 static void avr_door_ctrl_complete_request(
 	struct avr_door_ctrl_request *req, int status)
 {
+	if (status == 0)
+		status = UBUS_STATUS_OK;
+	else if (status == -ETIMEDOUT)
+		status = UBUS_STATUS_TIMEOUT;
+	else
+		status = UBUS_STATUS_UNKNOWN_ERROR;
+
 	uloop_timeout_cancel(&req->timeout);
 	ubus_complete_deferred_request(
 		req->ctrl->daemon->uctx, &req->uresp, status);
@@ -111,7 +118,7 @@ static void avr_door_ctrl_on_request_timeout(struct uloop_timeout *timeout)
 	struct avr_door_ctrl_request *req = container_of(
 		timeout, struct avr_door_ctrl_request, timeout);
 
-	avr_door_ctrl_complete_request(req, UBUS_STATUS_TIMEOUT);
+	avr_door_ctrl_complete_request(req, -ETIMEDOUT);
 }
 
 int avr_door_ctrl_method_handler(
@@ -267,7 +274,7 @@ static void avr_door_ctrl_on_transport_event(
 			/* Terminate the request */
 			if (ctrl->req)
 				avr_door_ctrl_complete_request(
-					ctrl->req, UBUS_STATUS_UNKNOWN_ERROR);
+					ctrl->req, -EINVAL);
 		} else {
 			// TODO: log error
 		}
@@ -292,8 +299,7 @@ static void avr_door_ctrl_on_transport_event(
 			uloop_fd_add(&ctrl->fd, ctrl->fd.flags & ~ULOOP_WRITE);
 			// TODO: log error
 			if (err < 0)
-				avr_door_ctrl_complete_request(
-					ctrl->req, UBUS_STATUS_UNKNOWN_ERROR);
+				avr_door_ctrl_complete_request(ctrl->req, err);
 		}
 	}
 }
