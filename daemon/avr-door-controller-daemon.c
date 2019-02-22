@@ -48,6 +48,7 @@ struct avr_door_ctrl_method_request {
 	struct avr_door_ctrl_request req;
 
 	const struct avr_door_ctrl_method *method;
+	struct ubus_context *uctx;
 	struct ubus_request_data uresp;
 	struct blob_buf bbuf;
 	void *query_ctx;
@@ -197,8 +198,7 @@ static int avr_door_ctrl_method_on_response(
 	}
 
 	if (!err)
-		err = ubus_send_reply(request->ctrl->daemon->uctx,
-				      &req->uresp, req->bbuf.head);
+		err = ubus_send_reply(req->uctx, &req->uresp, req->bbuf.head);
 
 	return err;
 }
@@ -217,8 +217,7 @@ static void avr_door_ctrl_method_complete(
 	else
 		status = UBUS_STATUS_UNKNOWN_ERROR;
 
-	ubus_complete_deferred_request(request->ctrl->daemon->uctx,
-				       &req->uresp, status);
+	ubus_complete_deferred_request(req->uctx, &req->uresp, status);
 }
 
 static void avr_door_ctrl_method_destroy(struct avr_door_ctrl_request *request)
@@ -280,6 +279,7 @@ int avr_door_ctrl_method_handler(
 		method->cmd, method->query_size);
 
 	/* Setup the request */
+	req->uctx = uctx;
 	req->method = method;
 	blob_buf_init(&req->bbuf, 0);
 
@@ -292,7 +292,7 @@ int avr_door_ctrl_method_handler(
 		}
 	}
 
-	ubus_defer_request(ctrl->daemon->uctx, ureq, &req->uresp);
+	ubus_defer_request(uctx, ureq, &req->uresp);
 
 	avr_door_ctrl_request_send(&req->req);
 
