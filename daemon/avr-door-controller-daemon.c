@@ -27,14 +27,27 @@
 #define AVR_DOOR_CTRL_REQUEST_TIMEOUT 500
 
 struct avr_door_ctrld;
+struct avr_door_ctrl_request;
+
+struct avr_door_ctrl_request_handlers {
+	int (*on_response)(struct avr_door_ctrl_request *req,
+			   const struct avr_door_ctrl_msg *msg);
+	void (*complete)(struct avr_door_ctrl_request *req, int err);
+	void (*destroy)(struct avr_door_ctrl_request *req);
+};
 
 struct avr_door_ctrl_request {
 	struct list_head list;
 	struct avr_door_ctrl *ctrl;
-	const struct avr_door_ctrl_method *method;
-
 	struct avr_door_ctrl_msg msg;
 	struct uloop_timeout timeout;
+	const struct avr_door_ctrl_request_handlers *handlers;
+};
+
+struct avr_door_ctrl_method_request {
+	struct avr_door_ctrl_request req;
+
+	const struct avr_door_ctrl_method *method;
 	struct ubus_request_data uresp;
 	struct blob_buf bbuf;
 	void *query_ctx;
@@ -80,8 +93,8 @@ static void avr_door_ctrl_send_next_request(struct avr_door_ctrl *ctrl)
 {
 	/* Destroy the last request */
 	if (ctrl->req) {
-		blob_buf_free(&ctrl->req->bbuf);
-		free(ctrl->req);
+		if (ctrl->req->handlers->destroy)
+			ctrl->req->handlers->destroy(ctrl->req);
 		ctrl->req = NULL;
 	}
 
@@ -100,17 +113,13 @@ static void avr_door_ctrl_send_next_request(struct avr_door_ctrl *ctrl)
 static void avr_door_ctrl_complete_request(
 	struct avr_door_ctrl_request *req, int status)
 {
-	if (status == 0)
-		status = UBUS_STATUS_OK;
-	else if (status == -ETIMEDOUT)
-		status = UBUS_STATUS_TIMEOUT;
-	else
-		status = UBUS_STATUS_UNKNOWN_ERROR;
+	struct avr_door_ctrl *ctrl = req->ctrl;
 
 	uloop_timeout_cancel(&req->timeout);
-	ubus_complete_deferred_request(
-		req->ctrl->daemon->uctx, &req->uresp, status);
-	avr_door_ctrl_send_next_request(req->ctrl);
+	if (req->handlers->complete)
+		req->handlers->complete(req, status);
+
+	avr_door_ctrl_send_next_request(ctrl);
 }
 
 static void avr_door_ctrl_on_request_timeout(struct uloop_timeout *timeout)
@@ -119,6 +128,18 @@ static void avr_door_ctrl_on_request_timeout(struct uloop_timeout *timeout)
 		timeout, struct avr_door_ctrl_request, timeout);
 
 	avr_door_ctrl_complete_request(req, -ETIMEDOUT);
+}
+
+static void avr_door_ctrl_request_init(
+	struct avr_door_ctrl_request *req, struct avr_door_ctrl *ctrl,
+	const struct avr_door_ctrl_request_handlers *handlers,
+	unsigned msg_type, unsigned msg_length)
+{
+	req->ctrl = ctrl;
+	req->handlers = handlers;
+	req->timeout.cb = avr_door_ctrl_on_request_timeout;
+	req->msg.type = msg_type;
+	req->msg.length = msg_length;
 }
 
 static void avr_door_ctrl_request_send(struct avr_door_ctrl_request *req)
@@ -133,6 +154,90 @@ static void avr_door_ctrl_request_send(struct avr_door_ctrl_request *req)
 		avr_door_ctrl_send_next_request(ctrl);
 }
 
+static int avr_door_ctrl_method_continue(
+	struct avr_door_ctrl_method_request *req,
+	const struct avr_door_ctrl_msg *resp) {
+	int err;
+
+	/* Check that the method do support continuing the request */
+	if (!req->method->write_continue_query)
+		return -EBADE;
+
+	/* Update the request according to the response */
+	err = req->method->write_continue_query(
+		resp->payload, req->req.msg.payload, req->query_ctx);
+	if (err)
+		return err;
+
+	/* Send the updated request */
+	avr_door_ctrl_start_sending(req->req.ctrl);
+
+	/* Indicate that the request is still in progress */
+	return -EINPROGRESS;
+}
+
+static int avr_door_ctrl_method_on_response(
+	struct avr_door_ctrl_request *request,
+	const struct avr_door_ctrl_msg *resp) {
+	struct avr_door_ctrl_method_request *req =
+		container_of(request,
+			     struct avr_door_ctrl_method_request, req);
+	int err = 0;
+
+	if (resp->length < req->method->response_size) {
+		fprintf(stderr, "Received too short response\n");
+		return -EINVAL;
+	}
+
+	if (req->method->read_response) {
+		err = req->method->read_response(
+			resp->payload, &req->bbuf, req->query_ctx);
+		if (err == -EAGAIN)
+			return avr_door_ctrl_method_continue(req, resp);
+	}
+
+	if (!err)
+		err = ubus_send_reply(request->ctrl->daemon->uctx,
+				      &req->uresp, req->bbuf.head);
+
+	return err;
+}
+
+static void avr_door_ctrl_method_complete(
+	struct avr_door_ctrl_request *request, int err) {
+	struct avr_door_ctrl_method_request *req =
+		container_of(request,
+			     struct avr_door_ctrl_method_request, req);
+	int status
+
+	if (err == 0)
+		status = UBUS_STATUS_OK;
+	else if (err == -ETIMEDOUT)
+		status = UBUS_STATUS_TIMEOUT;
+	else
+		status = UBUS_STATUS_UNKNOWN_ERROR;
+
+	ubus_complete_deferred_request(request->ctrl->daemon->uctx,
+				       &req->uresp, status);
+}
+
+static void avr_door_ctrl_method_destroy(struct avr_door_ctrl_request *request)
+{
+	struct avr_door_ctrl_method_request *req =
+		container_of(request,
+			     struct avr_door_ctrl_method_request, req);
+
+	blob_buf_free(&req->bbuf);
+	free(request);
+}
+
+static const
+struct avr_door_ctrl_request_handlers avr_door_ctrl_method_handlers = {
+	.on_response = avr_door_ctrl_method_on_response,
+	.complete = avr_door_ctrl_method_complete,
+	.destroy = avr_door_ctrl_method_destroy,
+};
+
 int avr_door_ctrl_method_handler(
 	struct ubus_context *uctx, struct ubus_object *uobj,
 	struct ubus_request_data *ureq, const char *method_name,
@@ -143,7 +248,7 @@ int avr_door_ctrl_method_handler(
 		avr_door_ctrl_get_method(method_name);
 	struct avr_door_ctrl *ctrl = container_of(
 		uobj, struct avr_door_ctrl, uobject);
-	struct avr_door_ctrl_request *req;
+	struct avr_door_ctrl_method_request *req;
 	int i, err;
 
 	if (!method) {
@@ -170,19 +275,17 @@ int avr_door_ctrl_method_handler(
 	if (!req)
 		return UBUS_STATUS_UNKNOWN_ERROR;
 
+	avr_door_ctrl_request_init(
+		&req->req, ctrl, &avr_door_ctrl_method_handlers,
+		method->cmd, method->query_size);
+
 	/* Setup the request */
-	req->ctrl = ctrl;
 	req->method = method;
-	req->timeout.cb = avr_door_ctrl_on_request_timeout;
 	blob_buf_init(&req->bbuf, 0);
 
-	/* Write the control request */
-	req->msg.type = method->cmd;
-	req->msg.length = method->query_size;
-
 	if (method->write_query) {
-		err = method->write_query(args, req->msg.payload, &req->bbuf,
-					  &req->query_ctx);
+		err = method->write_query(args, req->req.msg.payload,
+					  &req->bbuf, &req->query_ctx);
 		if (err) {
 			free(req);
 			return err;
@@ -192,27 +295,6 @@ int avr_door_ctrl_method_handler(
 	ubus_defer_request(ctrl->daemon->uctx, ureq, &req->uresp);
 
 	avr_door_ctrl_request_send(&req->req);
-
-	return 0;
-}
-
-static int avr_door_ctrl_continue_request(struct avr_door_ctrl *ctrl)
-{
-	struct avr_door_ctrl_request *req = ctrl->req;
-	int err;
-
-	/* Check that the method do support continuing the request */
-	if (!req->method->write_continue_query)
-		return -EBADE;
-
-	/* Update the request according to the response */
-	err = req->method->write_continue_query(
-		ctrl->msg.payload, req->msg.payload, req->query_ctx);
-	if (err)
-		return err;
-
-	/* Send the updated request */
-	avr_door_ctrl_start_sending(ctrl);
 
 	return 0;
 }
@@ -230,34 +312,28 @@ static void avr_door_ctrl_recv_msg(
 
 	uloop_timeout_cancel(&req->timeout);
 
-	if (msg->type != CTRL_CMD_OK) {
-		// LOG bad response size
-		fprintf(stderr, "Received error %d\n",
-			(int)(int8_t)msg->payload[0]);
-		err = UBUS_STATUS_UNKNOWN_ERROR;
-		goto complete_request;
-	}
-
-	if (msg->length < req->method->response_size) {
-		fprintf(stderr, "Received too short response\n");
-		err = UBUS_STATUS_UNKNOWN_ERROR;
-		goto complete_request;
-	}
-
-	if (req->method->read_response) {
-		err = req->method->read_response(msg->payload, &req->bbuf,
-						 req->query_ctx);
-		if (err == -EAGAIN) {
-			err = avr_door_ctrl_continue_request(ctrl);
-			if (!err)
+	switch (msg->type) {
+	case CTRL_CMD_OK:
+		if (req->handlers->on_response) {
+			err = req->handlers->on_response(req, msg);
+			if (err == -EINPROGRESS)
 				return;
 		}
+		break;
+	case CTRL_CMD_ERROR:
+		if (msg->length == 1) {
+			err = (int8_t)msg->payload[0];
+		} else {
+			// Malformed response
+			err = -EINVAL;
+		}
+		break;
+	default:
+		fprintf(stderr, "Invalid response\n");
+		err = -EINVAL;
+		break;
 	}
-	if (!err)
-		err = ubus_send_reply(ctrl->daemon->uctx,
-				      &req->uresp, req->bbuf.head);
 
-complete_request:
 	avr_door_ctrl_complete_request(ctrl->req, err);
 }
 
