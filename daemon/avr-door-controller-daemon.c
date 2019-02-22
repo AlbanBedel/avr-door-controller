@@ -284,11 +284,17 @@ static void avr_door_ctrl_on_transport_event(
 		if (err > 0)
 			uloop_timeout_set(&ctrl->req->timeout,
 					  AVR_DOOR_CTRL_REQUEST_TIMEOUT);
+		else if (err == 0) /* Handle EOF as an error */
+			err = -ENOLINK;
 
 		/* Disable the write events unless we must wait */
-		if (err != -EAGAIN && err != -EWOULDBLOCK)
+		if (err != -EAGAIN && err != -EWOULDBLOCK) {
 			uloop_fd_add(&ctrl->fd, ctrl->fd.flags & ~ULOOP_WRITE);
-		// TODO: log error
+			// TODO: log error
+			if (err < 0)
+				avr_door_ctrl_complete_request(
+					ctrl->req, UBUS_STATUS_UNKNOWN_ERROR);
+		}
 	}
 }
 
