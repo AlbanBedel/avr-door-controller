@@ -121,6 +121,18 @@ static void avr_door_ctrl_on_request_timeout(struct uloop_timeout *timeout)
 	avr_door_ctrl_complete_request(req, -ETIMEDOUT);
 }
 
+static void avr_door_ctrl_request_send(struct avr_door_ctrl_request *req)
+{
+	struct avr_door_ctrl *ctrl = req->ctrl;
+
+	/* Add the request to the pending list */
+	list_add_tail(&req->list, &ctrl->pending_reqs);
+
+	/* Send it out if no request is beeing sent */
+	if (!ctrl->req)
+		avr_door_ctrl_send_next_request(ctrl);
+}
+
 int avr_door_ctrl_method_handler(
 	struct ubus_context *uctx, struct ubus_object *uobj,
 	struct ubus_request_data *ureq, const char *method_name,
@@ -177,13 +189,9 @@ int avr_door_ctrl_method_handler(
 		}
 	}
 
-	/* Add the request to pending list */
 	ubus_defer_request(ctrl->daemon->uctx, ureq, &req->uresp);
-	list_add_tail(&req->list, &ctrl->pending_reqs);
 
-	/* Send it out if no request is beeing sent */
-	if (!ctrl->req)
-		avr_door_ctrl_send_next_request(ctrl);
+	avr_door_ctrl_request_send(&req->req);
 
 	return 0;
 }
