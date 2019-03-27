@@ -14,7 +14,9 @@
 #define DOOR_CTRL_CARD_AND_PIN	ACCESS_TYPE_CARD_AND_PIN
 
 typedef int8_t (*door_ctrl_check)(
-	uint8_t door_id, uint8_t type, uint32_t key, void *context);
+	uint8_t door_id, uint8_t type,
+	uint32_t card, uint32_t pin,
+	void *context);
 
 struct door_ctrl_config {
 	uint8_t door_id;

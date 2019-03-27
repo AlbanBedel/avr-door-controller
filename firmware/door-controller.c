@@ -103,13 +103,13 @@ static void on_buzzer_finished(void *context)
 	event_add(&dc->wr, DOOR_CTRL_EVENT_BUZZER_FINISHED, EVENT_VAL(NULL));
 }
 
-static int8_t door_ctrl_check_key(struct door_ctrl *dc,
-				  uint8_t type, uint32_t key)
+static int8_t door_ctrl_check_key(struct door_ctrl *dc, uint8_t type,
+				  uint32_t card, uint32_t pin)
 {
 	if (!dc->check_key)
 		return -ENOENT;
 
-	return dc->check_key(dc->door_id, type, key, dc->check_context);
+	return dc->check_key(dc->door_id, type, card, pin, dc->check_context);
 }
 
 static void door_ctrl_set_open(struct door_ctrl *dc, uint8_t source,
@@ -221,7 +221,7 @@ static void on_event(uint8_t event, union event_val val, void *context)
 			break;
 		case WIEGAND_READER_EVENT_CARD:
 			if (door_ctrl_check_key(
-				    dc, DOOR_CTRL_CARD, val.u) == 0)
+				    dc, DOOR_CTRL_CARD, val.u, 0) == 0)
 				door_ctrl_open(dc);
 			else
 				door_ctrl_reject(dc);
@@ -230,15 +230,21 @@ static void on_event(uint8_t event, union event_val val, void *context)
 		break;
 	case DOOR_CTRL_READING_PIN:
 		if (event == WIEGAND_READER_EVENT_CARD) {
-			dc->pin ^= val.u;
 			key = WIEGAND_KEY_ENTER;
 		} else {
 			key = val.u;
 		}
 		if (key == WIEGAND_KEY_ENTER) {
-			uint8_t type = (event == WIEGAND_READER_EVENT_CARD) ?
-				DOOR_CTRL_CARD_AND_PIN : DOOR_CTRL_PIN;
-			if (door_ctrl_check_key(dc, type, dc->pin) == 0)
+			uint32_t card;
+			uint8_t type;
+			if (event == WIEGAND_READER_EVENT_CARD) {
+				type = DOOR_CTRL_CARD_AND_PIN;
+				card = val.u;
+			} else {
+				type = DOOR_CTRL_PIN;
+				card = 0;
+			}
+			if (door_ctrl_check_key(dc, type, card, dc->pin) == 0)
 				door_ctrl_open(dc);
 			else
 				door_ctrl_reject(dc);

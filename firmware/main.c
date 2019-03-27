@@ -17,8 +17,9 @@
 #include "sleep.h"
 
 static int8_t check_key(uint8_t door_id, uint8_t type,
-			uint32_t key, void *context)
+			uint32_t card, uint32_t pin, void *context)
 {
+	uint32_t key = card ^ pin;
 	int8_t err;
 
 	err = eeprom_has_access(type, key, door_id);
