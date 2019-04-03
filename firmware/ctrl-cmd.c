@@ -6,13 +6,18 @@
 #include "uart-ctrl-transport.h"
 #include "ctrl-cmd.h"
 #include "eeprom.h"
-#include "event-queue.h"
+#include "work-queue.h"
 #include "utils.h"
 
 struct ctrl_cmd_desc {
 	uint8_t type;
 	uint8_t length;
 	int8_t (*handler)(struct ctrl_transport *ctrl, const void *payload);
+};
+
+struct ctrl_cmd_handler {
+	struct ctrl_transport transport;
+	struct worker on_event;
 };
 
 static int8_t ctrl_cmd_get_device_descriptor(
@@ -248,37 +253,30 @@ error:
 }
 
 static void on_ctrl_transport_event(
-	uint8_t event, union event_val val, void *context)
+	struct worker *worker, uint8_t event, union work_arg val)
 {
-	struct ctrl_transport *ctrl = context;
+	struct ctrl_cmd_handler *ctrl =
+		container_of(worker, struct ctrl_cmd_handler, on_event);
 
 	switch(event) {
 	case CTRL_TRANSPORT_RECEIVED_MSG:
-		on_ctrl_transport_received_msg(ctrl, val.data);
+		on_ctrl_transport_received_msg(&ctrl->transport, val.data);
 		break;
 	}
 }
 
-static struct ctrl_transport ctrl_transport;
-static struct event_handler ctrl_transport_handler = {
-	.source = &ctrl_transport,
-	.handler = on_ctrl_transport_event,
-	.context = &ctrl_transport,
+static struct ctrl_cmd_handler ctrl_cmd_handler = {
+	.on_event.execute = on_ctrl_transport_event,
 };
 
 int8_t ctrl_cmd_init(void)
 {
-	int8_t err;
-
-	err = ctrl_transport_init(&ctrl_transport);
-	if (err)
-		return err;
-
-	return event_handler_add(&ctrl_transport_handler);
+	return ctrl_transport_init(&ctrl_cmd_handler.transport,
+				   &ctrl_cmd_handler.on_event);
 }
 
 int8_t ctrl_send_event(uint8_t type, const void *payload, uint8_t length)
 {
 	return ctrl_transport_send_event(
-		&ctrl_transport, type, payload, length);
+		&ctrl_cmd_handler.transport, type, payload, length);
 }

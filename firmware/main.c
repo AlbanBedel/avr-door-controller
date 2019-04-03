@@ -6,7 +6,7 @@
 #include <avr/interrupt.h>
 #include <avr/boot.h>
 #include <util/delay.h>
-#include "event-queue.h"
+#include "work-queue.h"
 #include "door-controller.h"
 #include "external-irq.h"
 #include "eeprom.h"
@@ -84,7 +84,7 @@ int main(void)
 
 	sei();
 	ctrl_send_event(CTRL_EVENT_STARTED, NULL, 0);
-	event_loop_run(LIFE_LED_GPIO);
+	work_queue_run(LIFE_LED_GPIO);
 
 	return 0;
 }

@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "timer.h"
+#include "work-queue.h"
 
 struct wiegand_reader {
 	uint8_t bits[5]; /* For up to 34 bits */
@@ -11,6 +12,8 @@ struct wiegand_reader {
 	uint8_t data_pins;
 
 	struct timer word_timeout;
+
+	struct worker *on_event;
 };
 
 #define WIEGAND_READER_ERROR		0xFF
@@ -43,6 +46,7 @@ struct wiegand_reader {
  * on the reader.
  */
 int8_t wiegand_reader_init(struct wiegand_reader *wr,
-			   uint8_t d0_irq, uint8_t d1_irq);
+			   uint8_t d0_irq, uint8_t d1_irq,
+			   struct worker *on_event);
 
 #endif /* WIEGAND_READER_H */

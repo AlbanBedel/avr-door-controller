@@ -44,7 +44,6 @@ avr-door-controller.elf_DEPS :=		\
 	ctrl-cmd.o			\
 	door-controller.o		\
 	eeprom.o			\
-	event-queue.o			\
 	external-irq.o			\
 	gpio.o				\
 	main.o				\

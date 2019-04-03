@@ -3,6 +3,7 @@
 
 #include "ctrl-cmd-types.h"
 #include "ctrl-transport.h"
+#include "work-queue.h"
 
 /* The UART transport encode the messages as follow:
  *
@@ -28,6 +29,8 @@ struct ctrl_transport {
 
 	struct ctrl_msg msg;
 	uint8_t outbuf[1 + sizeof(struct ctrl_msg) * 2];
+
+	struct worker *on_event;
 };
 
 #endif /* UART_CTRL_TRANSPORT_H */

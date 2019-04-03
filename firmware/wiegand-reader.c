@@ -2,7 +2,6 @@
 #include <errno.h>
 #include "wiegand-reader.h"
 #include "external-irq.h"
-#include "event-queue.h"
 #include "gpio.h"
 
 /* Timeout to trigger reading the bits */
@@ -39,7 +38,7 @@ static uint8_t odd_parity(uint8_t *data, uint8_t from, uint8_t to)
 static void wiegand_reader_event(struct wiegand_reader *wr,
 				    uint8_t event, uint32_t val)
 {
-	event_add(wr, event, EVENT_VAL(val));
+	work_queue_schedule(wr->on_event, event, WORK_ARG(val));
 }
 
 static int8_t wiegand_reader_process_4bits_code(struct wiegand_reader *wr)
@@ -170,11 +169,13 @@ static void wiegand_reader_d1(uint8_t pin_state, void *context)
 }
 
 int8_t wiegand_reader_init(struct wiegand_reader *wr,
-			   uint8_t d0_irq, uint8_t d1_irq)
+			   uint8_t d0_irq, uint8_t d1_irq,
+			   struct worker *on_event)
 {
 	int8_t err;
 
 	memset(wr, 0, sizeof(*wr));
+	wr->on_event = on_event;
 
 	err = external_irq_setup(d0_irq, 1, IRQ_TRIGGER_BOTH_EDGE,
 				 wiegand_reader_d0, wr);

@@ -117,6 +117,18 @@ static void work_queue_run_once(void)
 	}
 }
 
+void _sleep_prepare(void)
+{
+	timers_sleep();
+	gpio_set_value(life_gpio, 0);
+}
+
+void _sleep_finish(void)
+{
+	gpio_set_value(life_gpio, 1);
+	timers_wakeup();
+}
+
 void work_queue_run(uint8_t gpio)
 {
 	life_gpio = gpio;

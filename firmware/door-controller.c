@@ -64,6 +64,12 @@ static void door_ctrl_show_state(struct door_ctrl *dc, enum door_state state)
 }
 #endif
 
+static void door_ctrl_event(struct door_ctrl *dc,
+			    uint8_t event, union work_arg arg)
+{
+	work_queue_schedule(&dc->hdlr, event, arg);
+}
+
 static void door_ctrl_set_state(struct door_ctrl *dc, enum door_state state)
 {
 	/* Do nothing if the state doesn't change */
@@ -78,14 +84,14 @@ static void door_ctrl_set_state(struct door_ctrl *dc, enum door_state state)
 	case DOOR_CTRL_OPENING:
 	case DOOR_CTRL_ERROR:
 		timer_deschedule(&dc->idle_timer);
-		event_remove(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT);
+		work_queue_deschedule(&dc->hdlr, DOOR_CTRL_EVENT_IDLE_TIMEOUT);
 		break;
 	default: /* Kill the warning about the other states */
 		break;
 	}
 #if DEBUG
-	event_add(&dc->wr, DOOR_CTRL_EVENT_STATE_CHANGED,
-		  EVENT_VAL((uint32_t)state));
+	door_ctrl_event(dc, DOOR_CTRL_EVENT_STATE_CHANGED,
+			WORK_ARG_UINT(state));
 #endif
 }
 
@@ -93,14 +99,14 @@ static void on_idle_timeout(void *context)
 {
 	struct door_ctrl *dc = context;
 
-	event_add(&dc->wr, DOOR_CTRL_EVENT_IDLE_TIMEOUT, EVENT_VAL(NULL));
+	door_ctrl_event(dc, DOOR_CTRL_EVENT_IDLE_TIMEOUT, WORK_ARG(NULL));
 }
 
 static void on_buzzer_finished(void *context)
 {
 	struct door_ctrl *dc = context;
 
-	event_add(&dc->wr, DOOR_CTRL_EVENT_BUZZER_FINISHED, EVENT_VAL(NULL));
+	door_ctrl_event(dc, DOOR_CTRL_EVENT_BUZZER_FINISHED, WORK_ARG(NULL));
 }
 
 static int8_t door_ctrl_check_key(struct door_ctrl *dc, uint8_t type,
@@ -163,9 +169,11 @@ static void door_ctrl_error(struct door_ctrl *dc)
 	trigger_start(&dc->buzzer_trigger, BUZZER_ERROR_DURATION);
 }
 
-static void on_event(uint8_t event, union event_val val, void *context)
+static void on_event(struct worker *worker,
+		     uint8_t event, union work_arg val)
 {
-	struct door_ctrl *dc = context;
+	struct door_ctrl *dc =
+		container_of(worker, struct door_ctrl, hdlr);
 	uint8_t key;
 
 #if DEBUG
@@ -294,17 +302,12 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 	dc->check_key = cfg->check_key;
 	dc->check_context = cfg->check_context;
 
-	dc->hdlr.source = &dc->wr;
-	dc->hdlr.handler = on_event;
-	dc->hdlr.context = dc;
+	dc->hdlr.execute = on_event;
 
 	timer_init(&dc->idle_timer, on_idle_timeout, dc);
 
-	err = event_handler_add(&dc->hdlr);
-	if (err)
-		return err;
-
-	err = wiegand_reader_init(&dc->wr, cfg->d0_irq, cfg->d1_irq);
+	err = wiegand_reader_init(
+		&dc->wr, cfg->d0_irq, cfg->d1_irq, &dc->hdlr);
 	if (err)
 		return err;
 

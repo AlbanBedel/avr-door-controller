@@ -5,7 +5,6 @@
 #include "uart.h"
 #include "uart-ctrl-transport.h"
 #include "ctrl-cmd.h"
-#include "event-queue.h"
 #include "sleep.h"
 
 #define UART_CTRL_TRANSPORT_SYNC		0
@@ -99,8 +98,9 @@ static void uart_ctrl_transport_on_recv(uint8_t byte, void *context)
 			ctrl_transport_reply(ctrl, CTRL_CMD_ERROR,
 					     &err, sizeof(err));
 		else
-			event_add(ctrl, CTRL_TRANSPORT_RECEIVED_MSG,
-				  EVENT_PTR(msg));
+			work_queue_schedule(ctrl->on_event,
+					    CTRL_TRANSPORT_RECEIVED_MSG,
+					    WORK_ARG_PTR(msg));
 		return;
 	}
 }
@@ -214,11 +214,13 @@ int8_t ctrl_transport_send_event(struct ctrl_transport *ctrl, uint8_t type,
 	return ctrl_transport_write(ctrl, type, payload, length);
 }
 
-int8_t ctrl_transport_init(struct ctrl_transport *ctrl)
+int8_t ctrl_transport_init(struct ctrl_transport *ctrl,
+			   struct worker *on_event)
 {
 	int8_t err;
 
 	memset(ctrl, 0, sizeof(*ctrl));
+	ctrl->on_event = on_event;
 
 	err = uart_init(UART_DIRECTION_BOTH, 38400, 1, UART_PARITY_NONE);
 	if (err)

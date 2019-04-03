@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "wiegand-reader.h"
-#include "event-queue.h"
+#include "work-queue.h"
 #include "trigger.h"
 #include "timer.h"
 #include "eeprom.h"
@@ -58,7 +58,7 @@ struct door_ctrl {
 	uint8_t door_id;
 
 	struct wiegand_reader wr;
-	struct event_handler hdlr;
+	struct worker hdlr;
 	enum door_state state;
 
 	uint32_t pin;
