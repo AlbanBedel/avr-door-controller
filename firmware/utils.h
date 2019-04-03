@@ -1,6 +1,8 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include <stddef.h>
+
 #define EXPAND(x)		x
 
 #define CAT2_(a, b)		a ## b
@@ -20,5 +22,11 @@
 #endif
 
 #define PACKED			__attribute__((packed))
+
+#ifndef container_of
+#define container_of(ptr, type, member) ({			\
+	const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
+	(type *)( (char *)__mptr - offsetof(type,member) );})
+#endif
 
 #endif /* UTILS_H */
