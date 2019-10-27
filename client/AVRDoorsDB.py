@@ -267,15 +267,24 @@ class Door(APIObject):
         a.delete()
 
     def get_user_access(self, user):
-        return AllAccess(self._db, (self.id, user.id),
-                         "DoorID = %s and UserID = %s")
+        first = None
+        where = "(Since is null or Since <= now()) and " + \
+                "(Until is null or Until  > now()) and " + \
+                "DoorID = %s and UserID = %s"
+        for a in AllAccess.get_all(
+                self._db, where = where, match = (self.id, user.id)):
+            if a.admin:
+                return a
+            if first is None:
+                first = a
+        return first
 
     def is_admin(self, user):
         try:
             access = self.get_user_access(user)
         except ValueError:
             return False
-        return access.admin
+        return bool(access and access.admin)
 
 class Access(object):
     def valid(self):
