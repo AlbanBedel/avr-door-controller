@@ -198,8 +198,6 @@ class Object(object):
         self._exists = False
 
     def load(self, match = None, cond = None):
-        # Clear the values already stored
-        self.clear()
         # If no match is given use the object ID
         if match is None:
             match = self.id
@@ -220,10 +218,16 @@ class Object(object):
             # TODO: Add a custom exception here
             raise ValueError("Several objects match '%s' in %s table" %
                              (cond % self.match_value(match), self.table))
-        # Store the values
+        # Get the values from the DB
         values = cursor.fetchone()
-        for i, c in enumerate(columns):
-            c.set_raw_value(self, values[i])
+        try:
+            # Store the values
+            for i, c in enumerate(columns):
+                c.set_raw_value(self, values[i])
+        except:
+            # But keep a consistent state in case of error
+            self.clear()
+            raise
         self._exists = True
 
     @classmethod
