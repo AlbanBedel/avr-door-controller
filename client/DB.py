@@ -95,6 +95,37 @@ class ObjectList(object):
     def __len__(self):
         return len(self._refs)
 
+    def __delitem__(self, idx):
+        ref = self._refs[idx]
+        # Use the class method to avoid potentially loading the object
+        # from the DB just to delete it
+        self._itemClass.delete_objects(self._obj._db, ref)
+        del self._refs[idx]
+        if ref in self._instances:
+            del self._instances[ref]
+
+    def append(self, *args, **kwargs):
+        item = self._itemClass(self._obj._db)
+        cols = list((c.name for c in self._itemClass.index_columns()))
+        # Pass the values from the parent object
+        for c in self._obj.index_columns():
+            val = self._obj.get_column_value(c.name)
+            item.set_column_value(c.name, val)
+            del cols[cols.index(c.name)]
+        # Add the positional parameters using the left over index columns
+        if len(args) > len(cols):
+            raise TypeError('Too many positional arguments!')
+        for n, arg in enumerate(args):
+            item.set_column_value(cols[n], arg)
+        # Add the extra parameters
+        for k in kwargs:
+            setattr(item, k, kwargs[k])
+        # Create the entry in the database
+        item.save()
+        # Append to the list
+        self._refs.append(item.id)
+        self._instances[item.id] = item
+
 class Object(object):
     table = None
 
@@ -104,6 +135,19 @@ class Object(object):
         self._exists = False
         if oid != None:
             self.load(oid, cond)
+
+    @classmethod
+    def field_of_column(cls, col):
+        cols = ((getattr(cls, n).name, n) for n in dir(cls)
+                     if not n.startswith('_') and
+                isinstance(getattr(cls, n), Column))
+        return dict(cols)[col]
+
+    def get_column_value(self, col):
+         return getattr(self, self.field_of_column(col))
+
+    def set_column_value(self, col, val):
+        setattr(self, self.field_of_column(col), val)
 
     @classmethod
     def columns(cls):
