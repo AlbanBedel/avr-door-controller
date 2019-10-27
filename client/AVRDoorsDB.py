@@ -172,8 +172,12 @@ class GroupUser(APIObject):
     admin = DB.Column('GroupAdmin')
 
     def __str__(self):
-        admin = ' (ADMIN)' if self.admin else ''
-        return "%s%s" % (self.user, admin)
+        s = str(self.user)
+        if self.user.card is None:
+            s += " (no card)"
+        if self.admin:
+            s += " (ADMIN)"
+        return s
 
 class Controller(APIObject):
     table = 'Controllers'
@@ -346,7 +350,9 @@ class DoorAccess(APIObject, Access):
 
     def describe_who(self):
         if self.user is not None:
-            desc = "%s" % self.user.name
+            desc = "%s" % self.user
+            if self.user.card is None:
+                desc += " (no card)"
         elif self.group is not None:
             desc = "%s group" % self.group.name
         else:
