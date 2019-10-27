@@ -214,10 +214,12 @@ class Object(object):
         cursor.execute(query, self.match_value(match))
         if cursor.rowcount == 0:
             # TODO: Add a custom exception here
-            raise ValueError("Object Not Found")
+            raise ValueError("No object matching '%s' found in %s table" %
+                             (cond % self.match_value(match), self.table))
         if cursor.rowcount > 1:
             # TODO: Add a custom exception here
-            raise ValueError("Too many matching object")
+            raise ValueError("Several objects match '%s' in %s table" %
+                             (cond % self.match_value(match), self.table))
         # Store the values
         values = cursor.fetchone()
         for i, c in enumerate(columns):
