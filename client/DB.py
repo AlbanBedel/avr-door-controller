@@ -84,6 +84,7 @@ class ObjectList(object):
             self._list_table, obj.columns_condition(*obj.index_columns()))
         cursor.execute(query, obj.match_value(obj.id))
         self._refs = list(cursor)
+        self._instances = {}
 
     def __getitem__(self, key):
         if key not in self._instances:
