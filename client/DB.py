@@ -86,11 +86,11 @@ class ObjectList(object):
         self._refs = list(cursor)
         self._instances = {}
 
-    def __getitem__(self, key):
-        if key not in self._instances:
-            self._instances[key] = self._itemClass(
-                self._obj._db, self._refs[key])
-        return self._instances[key]
+    def __getitem__(self, idx):
+        ref = self._refs[idx]
+        if ref not in self._instances:
+            self._instances[ref] = self._itemClass(self._obj._db, ref)
+        return self._instances[ref]
 
     def __len__(self):
         return len(self._refs)
