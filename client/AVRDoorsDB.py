@@ -1,5 +1,6 @@
 import DB
 from datetime import datetime
+import bcrypt
 
 class APIObject(DB.Object):
     href_format = None
@@ -27,7 +28,33 @@ class User(APIObject):
     email = DB.Column('EMail')
     phone = DB.Column('Phone')
     card = DB.Column('Card')
-    password = DB.Column('Password')
+    hashed_password = DB.Column('Password')
+
+    password_encoding = 'utf8'
+    password_salt_size = 12
+
+    @property
+    def password(self):
+        raise ValueError('Password is not readable')
+
+    def hash_password(self, val, salt = None):
+        val = val.encode(self.password_encoding)
+        if len(val) > 72:
+            raise ValueError('Passwords can only be up to 72 characters long')
+        if salt is None:
+            salt = bcrypt.gensalt(self.password_salt_size)
+        else:
+            salt = salt.encode('ascii')
+        return bcrypt.hashpw(val, salt).decode('ascii')
+
+    @password.setter
+    def password(self, val):
+        self.hashed_password = self.hash_password(val)
+
+    def check_password(self, val):
+        if self.hashed_password == None:
+            return False
+        return self.hash_password(val, self.hashed_password) == self.hashed_password
 
     def __str__(self):
         email = ' <%s>' % self.email if self.email is not None else ''

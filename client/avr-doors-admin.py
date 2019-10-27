@@ -258,7 +258,7 @@ class UserActions(Actions):
         print("User ID:\t%d" % user.id)
         print("Name:\t\t%s" % user.name)
         print("Password:\t%s" %
-              ("Set" if user.password is not None else "Not Set"))
+              ("Set" if user.hashed_password is not None else "Not Set"))
         if user.email is not None:
             print("EMail:\t\t%s" % user.email)
         if user.card is not None:
