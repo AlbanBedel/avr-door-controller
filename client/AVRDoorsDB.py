@@ -133,11 +133,7 @@ class Group(APIObject):
             return False
 
     def add_user(self, user, admin = False):
-        gu = GroupUser(self._db)
-        gu.group = self
-        gu.user = user
-        gu.admin = admin
-        gu.save()
+        self.users.append(user = user, admin = admin)
 
     def update_user(self, user, admin):
         gu = self.get_user(user)
