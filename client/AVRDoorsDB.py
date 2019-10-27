@@ -322,12 +322,14 @@ class Access(object):
 class AllAccess(DB.Object, Access):
     table = 'AllAccess'
 
-    door = DB.Column('DoorID', Door, index = True, writable = False)
+    door_access_id = DB.Column('DoorAccessID',
+                               index = True, writable = False)
+    door = DB.Column('DoorID', Door, writable = False)
     user = DB.Column('UserID', User, index = True, writable = False)
-    pin = DB.Column('PIN', index = True)
-    since = DB.Column('Since')
-    until = DB.Column('Until')
-    admin = DB.Column('DoorAdmin')
+    pin = DB.Column('PIN', writable = False)
+    since = DB.Column('Since', writable = False)
+    until = DB.Column('Until', writable = False)
+    admin = DB.Column('DoorAdmin', writable = False)
 
 class DoorAccess(APIObject, Access):
     table = 'DoorAccess'
