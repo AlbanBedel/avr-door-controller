@@ -192,6 +192,9 @@ class Controller(APIObject):
     firmware = DB.Column('Firmware')
     max_acl = DB.Column('MaxACL')
 
+    def __str__(self):
+        return self.location
+
     def get_door(self, index):
         try:
             return Door(self._db, (self.id, index),
@@ -207,6 +210,9 @@ class Door(APIObject):
     location = DB.Column('Location')
     controller = DB.Column('ControllerID', Controller)
     index = DB.Column('DoorIndex')
+
+    def __str__(self):
+        return self.location
 
     def get_access(self, user = None, group = None, pin = None):
         if user is None and group is None and pin is None:
