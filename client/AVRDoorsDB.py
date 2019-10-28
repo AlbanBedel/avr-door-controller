@@ -367,11 +367,29 @@ class DoorAccess(APIObject, Access):
             desc = "All"
         return desc + self.describe_condition()
 
+class ControllerSetACLDoors(object):
+    @classmethod
+    def decode(cls, ctrl_acl, doors_mask):
+        ctrl = ctrl_acl.controller
+        return tuple((ctrl.get_door(n) for n in range(8)
+                      if (1 << n) & doors_mask))
+
+class ControllerSetACL(DB.Object):
+    table = "ControllerSetACL"
+
+    controller = DB.Column('ControllerID', Controller,
+                           index = True, writable = False)
+    card = DB.Column('Card', index = True, writable = False)
+    pin = DB.Column('PIN', index = True, writable = False)
+    doors = DB.Column('Doors', ControllerSetACLDoors,
+                      index = True, writable = False)
+
 User.groups = DB.List(GroupUser)
 User.access = DB.List(AllAccess)
 Group.users = DB.List(GroupUser)
 
 Controller.doors = DB.List(Door)
+Controller.set_acl = DB.List(ControllerSetACL)
 
 User.doors = DB.List(DoorAccess)
 Group.doors = DB.List(DoorAccess)

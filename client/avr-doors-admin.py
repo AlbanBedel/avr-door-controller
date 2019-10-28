@@ -312,13 +312,13 @@ class ControllerActions(Actions):
 
     def print_list_header(self):
         print(" %-4s | %-30s | %-5s | %s" %
-              ("ID", "Location", "Doors", "Max ACL"))
+              ("ID", "Location", "Doors", "ACL"))
         print("-" * 6 + "+" + "-" * 32 + "+" + "-" * 7 + "+" + "-" * 8)
 
     def print_list_entry(self, c):
-        max_acl = "%4d" % c.max_acl if c.max_acl is not None else ''
-        print("% 5d | %-30s | % 5d | %s" %
-              (c.id, c.location, len(c.doors), max_acl))
+        max_acl = "/%d" % c.max_acl if c.max_acl is not None else ''
+        print("% 5d | %-30s | % 5d | %3d%s" %
+              (c.id, c.location, len(c.doors), len(c.set_acl), max_acl))
 
     def show_instance(self, ctrl):
         print("Controller ID:\t%d" % ctrl.id)
@@ -331,8 +331,8 @@ class ControllerActions(Actions):
                 print("Password:\t%s" % ctrl.password)
         if ctrl.firmware is not None:
             print("Firmware:\t%s" % ctrl.firmware)
-        if ctrl.max_acl is not None:
-            print("Max ACL:\t%d" % ctrl.max_acl)
+        max_acl = "/%d" % ctrl.max_acl if ctrl.max_acl is not None else ""
+        print("ACL:\t\t%d%s" % (len(ctrl.set_acl), max_acl))
 
     def update_from_device_descriptor(self, identifier):
         c = self.cls(self.db, identifier)
