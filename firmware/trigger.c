@@ -12,8 +12,8 @@ static void trigger_on_timeout(void *context)
 
 	if (tr->seq_pos >= tr->seq_len) {
 		trigger_stop(tr);
-		if (tr->on_finished)
-			tr->on_finished(tr->on_finished_context);
+		work_queue_schedule(tr->on_finished, tr->on_finished_cmd,
+				    WORK_ARG(NULL));
 		return;
 	}
 
@@ -60,7 +60,8 @@ void trigger_stop(struct trigger *tr)
 }
 
 int8_t trigger_init(struct trigger *tr, uint8_t gpio,
-		    timer_cb_t on_finished, void *on_finished_context)
+		    struct worker *on_finished,
+		    uint8_t on_finished_cmd)
 {
 	if (!tr || (gpio && !gpio_is_valid(gpio)))
 		return -EINVAL;
@@ -68,7 +69,7 @@ int8_t trigger_init(struct trigger *tr, uint8_t gpio,
 	memset(tr, 0, sizeof(*tr));
 	tr->gpio = gpio;
 	tr->on_finished = on_finished;
-	tr->on_finished_context = on_finished_context;
+	tr->on_finished_cmd = on_finished_cmd;
 
 	timer_init(&tr->timer, trigger_on_timeout, tr);
 

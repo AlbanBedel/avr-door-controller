@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "timer.h"
+#include "work-queue.h"
 
 struct trigger {
 	uint8_t gpio;
@@ -14,12 +15,12 @@ struct trigger {
 	uint8_t seq_len;
 	uint8_t seq_pos;
 
-	timer_cb_t on_finished;
-	void *on_finished_context;
+	struct worker *on_finished;
+	uint8_t on_finished_cmd;
 };
 
 int8_t trigger_init(struct trigger *tr, uint8_t gpio,
-		    timer_cb_t on_finished, void *context);
+		    struct worker *on_finished, uint8_t on_finished_cmd);
 
 void trigger_set(struct trigger *tr, uint8_t value);
 

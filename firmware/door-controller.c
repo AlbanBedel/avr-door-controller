@@ -102,13 +102,6 @@ static void on_idle_timeout(void *context)
 	door_ctrl_event(dc, DOOR_CTRL_EVENT_IDLE_TIMEOUT, WORK_ARG(NULL));
 }
 
-static void on_buzzer_finished(void *context)
-{
-	struct door_ctrl *dc = context;
-
-	door_ctrl_event(dc, DOOR_CTRL_EVENT_BUZZER_FINISHED, WORK_ARG(NULL));
-}
-
 static int8_t door_ctrl_check_key(struct door_ctrl *dc, uint8_t type,
 				  uint32_t card, uint32_t pin)
 {
@@ -312,17 +305,17 @@ int8_t door_ctrl_init(struct door_ctrl *dc,
 		return err;
 
 	err = trigger_init(&dc->open_trigger, cfg->open_gpio,
-			   NULL, NULL);
+			   NULL, 0);
 	if (err)
 		return err;
 
 	err = trigger_init(&dc->led_trigger, cfg->led_gpio,
-			   NULL, NULL);
+			   NULL, 0);
 	if (err)
 		return err;
 
 	err = trigger_init(&dc->buzzer_trigger, cfg->buzzer_gpio,
-			   on_buzzer_finished, dc);
+			   &dc->hdlr, DOOR_CTRL_EVENT_BUZZER_FINISHED);
 	if (err)
 		return err;
 
