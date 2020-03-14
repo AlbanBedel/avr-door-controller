@@ -63,6 +63,8 @@ all_DEPS :=				\
 
 all: $(all_DEPS)
 
+flash: $(patsubst %.flash.ihex,flash-%,$(all_DEPS))
+
 clean:
 	$(call cmd, CLEAN, rm -f *.o *.d *.a *.elf *.ihex)
 
@@ -78,6 +80,11 @@ LDFLAGS+=-mmcu=$(MCU)
 # Flag to use when creating images
 FLASH_FLAGS=-R .eeprom
 EEPROM_FLAGS=-j .eeprom --change-section-lma .eeprom=0
+
+AVRDUDE = avrdude
+AVRDUDE_PROGRAMMER = arduino
+AVRDUDE_PORT = /dev/ttyUSB0
+AVRDUDE_FLAGS = -c $(AVRDUDE_PROGRAMMER) -P $(AVRDUDE_PORT) -p $(MCU)
 
 %.o: %.c
 	$(call compile, CC, $(CPPFLAGS) $(CFLAGS) -o $@ -c $<)
@@ -102,7 +109,10 @@ EEPROM_FLAGS=-j .eeprom --change-section-lma .eeprom=0
 	$(call compile, LD, $(LDFLAGS) -o $@ $(filter %.o %.x,$($*.elf_DEPS)) $(LIBS))
 	$(call compile, SIZE, --mcu=$(MCU) -C $@)
 
-.PHONY: all clean
+flash-%: %.flash.ihex
+	$(call cmd, FLASH, $(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$<:i)
+
+.PHONY: all clean flash flash-%
 
 .SUFFIXES:
 
