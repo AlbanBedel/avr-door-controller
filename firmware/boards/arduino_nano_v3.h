@@ -1,5 +1,5 @@
 /* MCU */
-#define MCU			atmega328
+#define MCU			atmega328p
 #define F_CPU			16000000
 
 /* Life LED */
