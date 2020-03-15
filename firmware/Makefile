@@ -66,7 +66,7 @@ all: $(all_DEPS)
 flash: $(patsubst %.flash.ihex,flash-%,$(all_DEPS))
 
 clean:
-	$(call cmd, CLEAN, rm -f *.o *.d *.a *.elf *.ihex)
+	$(call cmd, CLEAN, rm -f *.[oda] mcu/*.[oda] boards/*.[oda] *.elf *.ihex)
 
 # All the flags we support
 ALL_FLAGS = CPPFLAGS CFLAGS CXXFLAGS LDFLAGS LIBS FLASH_FLAGS EEPROM_FLAGS
