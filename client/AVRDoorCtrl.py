@@ -5,6 +5,8 @@ import struct
 import crcmod
 import ubus
 import json
+import time
+import calendar
 from urllib.parse import urldefrag
 
 class AVRDoorCtrlUartTransport(object):
@@ -125,6 +127,8 @@ class AVRDoorCtrlUartTransport(object):
 
 class AVRDoorCtrlSerialHandler(object):
     CMD_GET_DEVICE_DESCRIPTOR = 0
+    CMD_GET_TIME = 2
+    CMD_SET_TIME = 3
     CMD_GET_DOOR_CONFIG = 10
     CMD_SET_DOOR_CONFIG = 11
     CMD_GET_ACCESS_RECORD = 20
@@ -332,6 +336,22 @@ class AVRDoorCtrlSerialHandler(object):
         return {
             'used': list(self._generate_used_access(clear)),
         }
+
+    def get_time(self):
+        response = self.send_cmd(self.CMD_GET_TIME, None, 4)
+        tm, = struct.unpack("<L", response[0:4])
+        return {
+            "time": time.asctime(time.gmtime(tm)),
+        }
+
+    def set_time(self, val = None):
+        if val is not None:
+            val = int(val)
+        if val is None or val <= 0:
+            val = calendar.timegm(time.gmtime())
+        req = struct.pack("<L", val)
+        self.send_cmd(self.CMD_SET_TIME, req, 0)
+        return {}
 
 class AVRDoorCtrlUbusHandler(ubus.UObject):
     def __init__(self, url, username, password,
@@ -548,6 +568,16 @@ if __name__ == '__main__':
         help = 'Restore all the access records from a backup file')
     method_parser.add_argument(
         'path', help = 'File to read the access records from')
+
+    method_parser = method_subparsers.add_parser(
+        'get_time',
+        help = 'Get the time from the controller')
+
+    method_parser = method_subparsers.add_parser(
+        'set_time',
+        help = 'Set the time from the controller')
+    method_parser.add_argument(
+        'val', help = 'Time to set on the device, 0 for now')
 
     args = parser.parse_args()
 
