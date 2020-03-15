@@ -7,3 +7,8 @@
 
 /* Doors */
 #define NUM_DOORS		2
+
+/* RTC */
+#define HAS_RTC			0
+#define DS3231_ADDR		0
+#define DS3231_IRQ		0

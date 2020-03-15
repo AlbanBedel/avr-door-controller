@@ -16,6 +16,7 @@
 #include "gpio.h"
 #include "sleep.h"
 #include "i2c.h"
+#include "rtc.h"
 
 static int8_t check_key(uint8_t door_id, uint8_t type,
 			uint32_t card, uint32_t pin, void *context)
@@ -80,13 +81,17 @@ int main(void)
 	if (!err)
 		err = init_doors();
 
+	sei();
+
+	if (!err && DS3231_ADDR)
+		rtc_ds3231_init(DS3231_ADDR, DS3231_IRQ);
+
 	/* On error turn on the life LED and sleep forwever */
 	if (err) {
 		gpio_direction_output(LIFE_LED_GPIO, 1);
 		sleep_while(1);
 	}
 
-	sei();
 	ctrl_send_event(CTRL_EVENT_STARTED, NULL, 0);
 	work_queue_run(LIFE_LED_GPIO);
 

@@ -58,6 +58,12 @@ avr-door-controller.elf_DEPS :=		\
 avr-door-controller.elf_$(WITH_I2C) +=	\
 	i2c.o				\
 
+avr-door-controller.elf_$(WITH_RTC) +=	\
+	rtc.o				\
+
+avr-door-controller.elf_$(WITH_RTC_DS3231) +=	\
+	rtc-ds3231.o			\
+
 avr-door-controller.flash.ihex_DEPS :=	\
 	avr-door-controller.elf		\
 

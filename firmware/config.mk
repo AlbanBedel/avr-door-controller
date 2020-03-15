@@ -28,3 +28,7 @@ $(error $(MCU) is not a supported MCU)
 endif
 
 WITH_I2C := $(call CPP_COND,$(MCU_H),HAS_I2C)
+
+WITH_RTC := $(call CPP_COND,$(BOARD_H),HAS_RTC)
+
+WITH_RTC_DS3231 := $(call CPP_COND,$(BOARD_H),HAS_RTC && DS3231_ADDR)

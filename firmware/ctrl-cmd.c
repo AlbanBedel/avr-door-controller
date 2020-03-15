@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <avr/pgmspace.h>
 #include "uart.h"
 #include "uart-ctrl-transport.h"
 #include "ctrl-cmd.h"
 #include "eeprom.h"
 #include "work-queue.h"
+#include "rtc.h"
 #include "utils.h"
 
 struct ctrl_cmd_desc {
@@ -170,6 +172,35 @@ static int8_t ctrl_cmd_get_used_access(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &resp, sizeof(resp));
 }
 
+static int8_t ctrl_cmd_get_time(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	time_t t = time(NULL) + UNIX_OFFSET;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &t, sizeof(t));
+}
+
+static int8_t ctrl_cmd_set_time(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	time_t t = *(time_t *)payload;
+	struct tm tm;
+	int8_t err;
+
+	t -= UNIX_OFFSET;
+	gmtime_r(&t, &tm);
+
+	if (HAS_RTC) {
+		err = rtc_set(&tm);
+		if (err)
+			return err;
+	}
+
+	set_system_time(t);
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
 static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 	{
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
@@ -220,6 +251,16 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_GET_USED_ACCESS,
 		.length  = sizeof(struct ctrl_cmd_get_used_access),
 		.handler = ctrl_cmd_get_used_access,
+	},
+	{
+		.type    = CTRL_CMD_GET_TIME,
+		.length  = 0,
+		.handler = ctrl_cmd_get_time,
+	},
+	{
+		.type    = CTRL_CMD_SET_TIME,
+		.length  = sizeof(time_t),
+		.handler = ctrl_cmd_set_time,
 	},
 };
 

@@ -23,6 +23,16 @@ struct ctrl_msg {
  */
 #define CTRL_CMD_PING			1
 
+/* Input:  none
+ * Output: time_t
+ */
+#define CTRL_CMD_GET_TIME		2
+
+/* Input:  time_t
+ * Output: none
+ */
+#define CTRL_CMD_SET_TIME		3
+
 /* Input:  struct struct ctrl_cmd_get_door_config
  * Output: struct door_config
  */
