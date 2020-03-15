@@ -26,3 +26,5 @@ MCU_O := $(patsubst %.c,%.o,$(wildcard mcu/$(MCU).c))
 ifeq ($(wildcard $(MCU_H)),)
 $(error $(MCU) is not a supported MCU)
 endif
+
+WITH_I2C := $(call CPP_COND,$(MCU_H),HAS_I2C)

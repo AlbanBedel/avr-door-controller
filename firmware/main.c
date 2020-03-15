@@ -15,6 +15,7 @@
 #include "ctrl-cmd.h"
 #include "gpio.h"
 #include "sleep.h"
+#include "i2c.h"
 
 static int8_t check_key(uint8_t door_id, uint8_t type,
 			uint32_t card, uint32_t pin, void *context)
@@ -67,12 +68,15 @@ static int init_doors(void)
 
 int main(void)
 {
-	int8_t err;
+	int8_t err = 0;
 
 	clock_prescale_set(clock_div_1);
 	timers_init();
 
-	err = ctrl_cmd_init();
+	if (HAS_I2C)
+		err = i2c_init(I2C_MAX_RATE);
+	if (!err)
+		err = ctrl_cmd_init();
 	if (!err)
 		err = init_doors();
 

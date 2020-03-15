@@ -55,6 +55,9 @@ avr-door-controller.elf_DEPS :=		\
 	wiegand-reader.o		\
 	work-queue.o			\
 
+avr-door-controller.elf_$(WITH_I2C) +=	\
+	i2c.o				\
+
 avr-door-controller.flash.ihex_DEPS :=	\
 	avr-door-controller.elf		\
 
