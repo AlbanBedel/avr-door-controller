@@ -9,14 +9,14 @@ BOARD_H := boards/$(BOARD).h
 BOARD_O := $(patsubst %.c,%.o,$(wildcard boards/$(BOARD).c))
 
 # Macros to read variables and conditions from $(BOARD_H)
-CPP_EXPAND = $(shell ($(1)) | $(CPP) -E -P -imacros $(BOARD_H) - | tee foo)
+CPP_EXPAND = $(shell ($(2)) | $(CPP) -E -P -imacros $(1) -)
 CPP_COND_CMD = echo '\#if $(1)' ; echo DEPS ; echo '\#endif'
 
-CPP_VAR = $(call CPP_EXPAND,echo $(1))
-CPP_COND = $(call CPP_EXPAND,$(call CPP_COND_CMD,$(1)))
+CPP_VAR = $(call CPP_EXPAND,$(1),echo $(2))
+CPP_COND = $(call CPP_EXPAND,$(1),$(call CPP_COND_CMD,$(2)))
 
 # Get the MCU and the optional modules
-MCU := $(call CPP_VAR,MCU)
+MCU := $(call CPP_VAR,$(BOARD_H),MCU)
 
 # Add the MCU support
 MCU_H := mcu/$(MCU).h
