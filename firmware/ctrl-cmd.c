@@ -150,6 +150,11 @@ static int8_t ctrl_cmd_get_used_access(
 			memset(&resp, 0, sizeof(resp));
 			break;
 		}
+		/* Skip over continuation records */
+		if (err == -EBUSY) {
+			i++;
+			continue;
+		}
 		if (err)
 			return err;
 
