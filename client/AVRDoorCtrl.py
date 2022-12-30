@@ -150,6 +150,22 @@ class AVRDoorCtrlSerialHandler(object):
     ACCESS_TYPE_CARD = 2
     ACCESS_TYPE_CARD_AND_PIN = ACCESS_TYPE_CARD | ACCESS_TYPE_PIN
 
+    _errors = {
+        1: "Operation not permitted",
+        2: "No such file or directory",
+        4: "Interrupted system call",
+        5: "I/O error",
+        7: "Argument list too long",
+        12: "Out of memory",
+        14: "Bad address",
+        16: "Device or resource busy",
+        17: "File exists",
+        19: "No such device",
+        22: "Invalid argument",
+        28: "No space left on device",
+        32: "Out of range",
+    }
+
     def __init__(self, dev, *args, **kwargs):
         if dev.startswith('/dev/tty'):
             self._transport = AVRDoorCtrlUartTransport(dev, *args, **kwargs)
@@ -171,6 +187,9 @@ class AVRDoorCtrlSerialHandler(object):
         #print("W: %02x - %s" % (type, payload))
         self._transport.send_msg(type, payload)
 
+    def strerror(self, err):
+        return self._errors.get(err, f"Error {err}")
+
     def send_cmd(self, type, payload = None, response_size=0):
         self.send_msg(type, payload)
         reply = self.EVENT_BASE
@@ -182,7 +201,7 @@ class AVRDoorCtrlSerialHandler(object):
             if len(response) < 1:
                 raise Exception("Invalid error reply")
             errno, = struct.unpack("b", response)
-            raise Exception("Error %d" % -errno)
+            raise Exception(self.strerror(-errno))
         # Make sure we got an OK
         if reply != self.REPLY_OK:
             raise Exception("Bad reply type: %d" % reply)
