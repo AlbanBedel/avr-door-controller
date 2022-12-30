@@ -14,25 +14,25 @@ drop function if exists HOTP;
 DELIMITER //
 
 /* process in 32-bit blocks to avoid bugs in older mysql versions */
-CREATE FUNCTION HMAC_PAD_ONE(hexkey CHAR(128), offset INT, pad_data BIGINT UNSIGNED)
+CREATE FUNCTION HMAC_PAD_ONE(hexkey CHAR(128), key_offset INT, pad_data BIGINT UNSIGNED)
                 RETURNS CHAR(8) DETERMINISTIC
 BEGIN
 
 RETURN LPAD(CONV(
-              CONV(MID(hexkey, offset + 1, 8), 16, 10)  ^  pad_data,
+              CONV(MID(hexkey, key_offset + 1, 8), 16, 10)  ^  pad_data,
               10, 16),
 	    8, "0");
 
 END //
 
-CREATE FUNCTION HMAC_PAD_FOUR(hexkey CHAR(128), offset INT, pad_data BIGINT UNSIGNED)
+CREATE FUNCTION HMAC_PAD_FOUR(hexkey CHAR(128), key_offset INT, pad_data BIGINT UNSIGNED)
                 RETURNS CHAR(32) DETERMINISTIC
 BEGIN
 
-RETURN CONCAT(HMAC_PAD_ONE(hexkey, offset + 0, pad_data),
-              HMAC_PAD_ONE(hexkey, offset + 8, pad_data),
-              HMAC_PAD_ONE(hexkey, offset + 16, pad_data),
-              HMAC_PAD_ONE(hexkey, offset + 24, pad_data));
+RETURN CONCAT(HMAC_PAD_ONE(hexkey, key_offset + 0, pad_data),
+              HMAC_PAD_ONE(hexkey, key_offset + 8, pad_data),
+              HMAC_PAD_ONE(hexkey, key_offset + 16, pad_data),
+              HMAC_PAD_ONE(hexkey, key_offset + 24, pad_data));
 END //
 
 CREATE FUNCTION HMAC_PAD(hexkey CHAR(128), pad_data BIGINT UNSIGNED)
