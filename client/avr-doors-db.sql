@@ -4,6 +4,80 @@ create database if not exists AVRDoors
 
 use AVRDoors;
 
+-- Functions needed for HOTP
+drop function if exists HMAC_SHA1;
+drop function if exists HMAC_PAD;
+drop function if exists HMAC_PAD_FOUR;
+drop function if exists HMAC_PAD_ONE;
+drop function if exists HOTP;
+
+DELIMITER //
+
+/* process in 32-bit blocks to avoid bugs in older mysql versions */
+CREATE FUNCTION HMAC_PAD_ONE(hexkey CHAR(128), offset INT, pad_data BIGINT UNSIGNED)
+                RETURNS CHAR(8) DETERMINISTIC
+BEGIN
+
+RETURN LPAD(CONV(
+              CONV(MID(hexkey, offset + 1, 8), 16, 10)  ^  pad_data,
+              10, 16),
+	    8, "0");
+
+END //
+
+CREATE FUNCTION HMAC_PAD_FOUR(hexkey CHAR(128), offset INT, pad_data BIGINT UNSIGNED)
+                RETURNS CHAR(32) DETERMINISTIC
+BEGIN
+
+RETURN CONCAT(HMAC_PAD_ONE(hexkey, offset + 0, pad_data),
+              HMAC_PAD_ONE(hexkey, offset + 8, pad_data),
+              HMAC_PAD_ONE(hexkey, offset + 16, pad_data),
+              HMAC_PAD_ONE(hexkey, offset + 24, pad_data));
+END //
+
+CREATE FUNCTION HMAC_PAD(hexkey CHAR(128), pad_data BIGINT UNSIGNED)
+                RETURNS BINARY(64) DETERMINISTIC
+BEGIN
+
+RETURN UNHEX(CONCAT(HMAC_PAD_FOUR(hexkey, 0, pad_data),
+                    HMAC_PAD_FOUR(hexkey, 32, pad_data),
+                    HMAC_PAD_FOUR(hexkey, 64, pad_data),
+                    HMAC_PAD_FOUR(hexkey, 96, pad_data)));
+END //
+
+CREATE FUNCTION HMAC_SHA1(secret VARBINARY(64), text VARBINARY(128))
+                RETURNS CHAR(40) DETERMINISTIC
+BEGIN
+DECLARE ipad, opad BINARY(64);
+DECLARE hexkey CHAR(128);
+
+SET hexkey = RPAD(HEX(secret), 128, "0");
+SET ipad = HMAC_PAD(hexkey, 0x36363636);
+SET opad = HMAC_PAD(hexkey, 0x5c5c5c5c);
+
+RETURN SHA1(CONCAT(opad, UNHEX(SHA1(CONCAT(ipad, text)))));
+
+END //
+
+CREATE FUNCTION HOTP(secret VARBINARY(64), cnt BIGINT UNSIGNED, digits INT UNSIGNED)
+                RETURNS VARCHAR(10) DETERMINISTIC
+BEGIN
+DECLARE hmac CHAR(40);
+DECLARE offset INT UNSIGNED;
+DECLARE bin_code INT UNSIGNED;
+
+SET hmac = HMAC_SHA1(secret, UNHEX(LPAD(HEX(cnt), 16, '0')));
+SET offset = CONV(MID(hmac, 1 + 19*2 + 1, 1), 16, 10);
+SET bin_code = CONV(CONCAT(CONV(CONV(MID(hmac, 1 + offset * 2, 2), 16, 10) & 0x7F, 10, 16),
+                           MID(hmac, 1 + (offset + 1) * 2, 6)),
+	            16, 10);
+
+RETURN LPAD(bin_code % POW(10, digits), digits, '0');
+
+END //
+
+DELIMITER ;
+
 -- Create the basic tables
 create table if not exists Users (
 	UserID int unsigned auto_increment primary key,
@@ -92,6 +166,34 @@ create table if not exists DoorAccess (
 		on update cascade on delete cascade
 );
 
+create table if not exists DoorOTP (
+	DoorOTPID int unsigned auto_increment primary key,
+	CreatedOn datetime not null default current_timestamp,
+	LastModified datetime not null default current_timestamp
+					on update current_timestamp,
+	DoorID int unsigned not null,
+	Secret binary(64) not null,
+	Digits int unsigned not null default 6,
+	Period int unsigned not null default 86400,
+
+	foreign key (DoorID) references Doors(DoorID)
+		on update cascade on delete cascade
+);
+
+create table if not exists DoorOTPOffset (
+	DoorOTPID int unsigned not null,
+	Offset int not null default 0,
+
+	foreign key (DoorOTPID) references DoorOTP(DoorOTPID)
+		on update cascade on delete cascade,
+	unique key(DoorOTPID, Offset)
+);
+
+create or replace view DoorOTPPin as
+	select DoorID, HOTP(Secret, floor(unix_timestamp() / Period) + Offset, Digits) as PIN
+	from DoorOTPOffset
+	left join DoorOTP on (DoorOTPOffset.DoorOTPID = DoorOTP.DoorOTPID);
+
 -- The ACLs currently in the controllers
 create table if not exists ControllerSetACL (
 	ControllerID int unsigned not null,
@@ -134,8 +236,8 @@ create or replace view AllAccess as
 	    UserAccess.UserID = GroupAccess.UserID
 	 where UserAccess.DoorID is null);
 
--- The ACL that should be in the controllers
-create or replace view ControllerACL as
+-- Generate an ACL list for the users and groups
+create or replace view UsersACL as
 	select ControllerID, Card, PIN,
 	       BIT_OR(1 << DoorIndex) as Doors
 	from AllAccess
@@ -147,6 +249,24 @@ create or replace view ControllerACL as
 	  and (Since is null or Since <= now())
 	  and (Until is null or Until > now())
 	group by ControllerID, AllAccess.UserID, PIN;
+
+-- Generate an ACL list for the OTP pins
+create or replace view DoorOTPACL as
+	select ControllerID, PIN,
+	       BIT_OR(1 << DoorIndex) as Doors
+	from DoorOTPPin
+	join Doors on (DoorOTPPin.DoorID = Doors.DoorID)
+	where ControllerID is not null and DoorIndex is not null
+	group by ControllerID, PIN;
+
+-- The ACL that should be in the controllers
+create or replace view ControllerACL as
+	select ControllerID, Card, PIN, BIT_OR(Doors) as Doors
+	from (select * from UsersACL
+	      union all
+	      (select ControllerID, NULL, PIN, Doors from DoorOTPACL)
+	) t
+	group by ControllerID, Card, PIN;
 
 -- The differences between what is and what should be in the controllers.
 -- The 'Op' column indicate if the entry should be added (1) or removed (0).
