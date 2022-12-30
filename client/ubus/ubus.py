@@ -94,7 +94,8 @@ class UBus(object):
         result = self.jsonrpc_request('call', [ sessionid, obj, method, params ])
         if result[0] != 0:
             raise UError(result[0])
-        return result[1]
+        # Return an empty dict for compatibility with older versions
+        return result[1] if len(result) > 1 else {}
 
     def login(self, username, password, timeout=300):
         params = {
