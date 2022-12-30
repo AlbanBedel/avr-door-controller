@@ -53,10 +53,9 @@ class AVRDoorCtrlUartTransport(object):
         crc = None
 
         while True:
-            # TODO: raise timeout if nothing is available
             c = self._tty.read(1)
             if len(c) < 1:
-                raise ValueError
+                raise TimeoutError
             c = c[0]
             if c == 0x7E:
                 sync = True
