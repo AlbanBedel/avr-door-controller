@@ -167,6 +167,7 @@ class AVRDoorCtrlSerialHandler(object):
     }
 
     def __init__(self, dev, *args, **kwargs):
+        self._events = []
         if dev.startswith('/dev/tty'):
             self._transport = AVRDoorCtrlUartTransport(dev, *args, **kwargs)
         else:
@@ -183,6 +184,13 @@ class AVRDoorCtrlSerialHandler(object):
         #print("Got %02x - %s" % (type, payload))
         return type, payload
 
+    def read_event(self):
+        if len(self._events) > 0:
+            type, payload = self._events.pop(0)
+        else:
+            type, payload = self.read_msg()
+        return self.parse_event(type, payload)
+
     def send_msg(self, type, payload = None):
         #print("W: %02x - %s" % (type, payload))
         self._transport.send_msg(type, payload)
@@ -192,10 +200,13 @@ class AVRDoorCtrlSerialHandler(object):
 
     def send_cmd(self, type, payload = None, response_size=0):
         self.send_msg(type, payload)
-        reply = self.EVENT_BASE
-        # Read the incoming messages, but skip over events
-        while reply >= self.EVENT_BASE and reply != self.REPLY_ERROR:
+        # Read the incoming messages, but queue the events
+        while True:
             reply, response = self.read_msg()
+            if self.is_event(reply):
+                self._events.append((reply, response))
+            else:
+                break
         # Raise errors
         if reply == self.REPLY_ERROR:
             if len(response) < 1:
@@ -209,6 +220,10 @@ class AVRDoorCtrlSerialHandler(object):
         if len(response) < response_size:
             raise Exception("Bad response length: %d" % len(response))
         return response
+
+    @classmethod
+    def is_event(cls, type):
+        return type >= cls.EVENT_BASE and type < cls.REPLY_ERROR
 
     @staticmethod
     def pack_pin(pin):
@@ -371,6 +386,19 @@ class AVRDoorCtrlSerialHandler(object):
         self.send_cmd(self.CMD_SET_TIME, req, 0)
         return {}
 
+    def parse_event(self, type, payload):
+        if not self.is_event(type):
+            raise TypeError
+        if type == self.EVENT_STARTED:
+            return {
+                'event': 'started',
+            }
+        else:
+            return {
+                'event': 'unknown',
+                'type': type,
+            }
+
 class AVRDoorCtrlUbusHandler(ubus.UObject):
     def __init__(self, url, username, password,
                  uobject = None, **ubus_kwargs):
@@ -467,13 +495,11 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
     def show_events(self):
         while True:
             try:
-                cmd, data = self.read_msg()
-                if len(data) > 0:
-                    print("Command: %02x - %s" % (cmd, binascii.hexlify(data)))
-                else:
-                    print("Command: %02x" % cmd)
-            except IndexError:
+                print(self.read_event())
+            except TimeoutError:
                 pass
+            except KeyboardInterrupt:
+                break
 
     def backup_access_records(self, path):
         acl = self.get_all_access_records()
