@@ -406,18 +406,25 @@ class DoorActions(Actions):
 if __name__ == '__main__':
     import argparse
     import sys
+    import os
+
+    # Load the DB access default from env for containers
+    default_db = os.environ.get('MYSQL_DATABASE', 'AVRDoors')
+    default_db_host = os.environ.get('MYSQL_HOST')
+    default_db_user = os.environ.get('MYSQL_USER')
+    default_db_password = os.environ.get('MYSQL_PASSWORD')
 
     # Main parser
     parser = argparse.ArgumentParser(
         description='Admin tool for the AVR Door Controllers')
     parser.add_argument(
-        '--db', metavar = 'DB', type = str, default='AVRDoors')
+        '--db', metavar = 'DB', type = str, default=default_db)
     parser.add_argument(
-        '--db-host', metavar = 'HOST', type = str)
+        '--db-host', metavar = 'HOST', type = str, default=default_db_host)
     parser.add_argument(
-        '--db-user', metavar = 'USER', type = str)
+        '--db-user', metavar = 'USER', type = str, default=default_db_user)
     parser.add_argument(
-        '--db-password', metavar = 'PASSWORD', type = str)
+        '--db-password', metavar = 'PASSWORD', type = str, default=default_db_password)
     main_subparsers = parser.add_subparsers(dest='cls')
 
     #
