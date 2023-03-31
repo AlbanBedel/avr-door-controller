@@ -86,6 +86,32 @@ int8_t eeprom_read_access_record(uint16_t idx, struct access_record_v2 *rec)
 	return eeprom_read_access_record_data(idx, rec);
 }
 
+int8_t eeprom_update_access_record_hdr(
+	uint16_t idx, const struct access_record_hdr *hdr)
+{
+	struct access_record_hdr old_hdr;
+	struct access_record_entry *eep;
+
+	/* Don't allow editing empty records or turning them in a continuation */
+	if (hdr->type == ACCESS_RECORD_TYPE(NONE, NONE) || hdr->doors == 0)
+		return -EINVAL;
+
+	/* Validate the index */
+	eep = eeprom_entry_at(idx, 1);
+	if (!eep)
+		return -EINVAL;
+
+	/* Check that we don't update the type of the record */
+	eeprom_read_block(&old_hdr, eep, sizeof(old_hdr));
+	if (hdr->type != old_hdr.type || old_hdr.doors == 0)
+		return -EINVAL;
+
+	if (memcmp(&old_hdr, hdr, sizeof(*hdr)))
+		eeprom_write_block(hdr, eep, sizeof(*hdr));
+
+	return 0;
+}
+
 int8_t eeprom_write_access_record(
 	uint16_t idx, const struct access_record_v2 *rec)
 {

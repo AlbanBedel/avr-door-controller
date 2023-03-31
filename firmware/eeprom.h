@@ -62,6 +62,9 @@ int8_t eeprom_read_access_record(
 int8_t eeprom_write_access_record(
 	uint16_t idx, const struct access_record_v2 *rec);
 
+int8_t eeprom_update_access_record_hdr(
+	uint16_t idx, const struct access_record_hdr *hdr);
+
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg);
 
 int8_t eeprom_set_door_config(uint8_t id, const struct door_config *cfg);
