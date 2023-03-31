@@ -22,16 +22,21 @@ struct ctrl_cmd_handler {
 	struct worker on_event;
 };
 
+void ctrl_cmd_init_device_descriptor(struct device_descriptor *desc)
+{
+	desc->major_version = 0;
+	desc->minor_version = 2;
+	desc->num_doors = NUM_DOORS;
+	desc->num_access_records = NUM_ACCESS_RECORDS;
+	desc->free_access_records = eeprom_get_free_access_record_count();
+}
+
 static int8_t ctrl_cmd_get_device_descriptor(
 	struct ctrl_transport *ctrl, const void *payload)
 {
-	struct device_descriptor desc = {
-		.major_version = 0,
-		.minor_version = 2,
-		.num_doors = NUM_DOORS,
-		.num_access_records = NUM_ACCESS_RECORDS,
-		.free_access_records = eeprom_get_free_access_record_count(),
-	};
+	struct device_descriptor desc = {};
+
+	ctrl_cmd_init_device_descriptor(&desc);
 
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK,
 				    &desc, sizeof(desc));

@@ -69,6 +69,7 @@ static int init_doors(void)
 
 int main(void)
 {
+	struct device_descriptor desc = {};
 	int8_t err = 0;
 
 	clock_prescale_set(clock_div_1);
@@ -92,7 +93,8 @@ int main(void)
 		sleep_while(1);
 	}
 
-	ctrl_send_event(CTRL_EVENT_STARTED, NULL, 0);
+	ctrl_cmd_init_device_descriptor(&desc);
+	ctrl_send_event(CTRL_EVENT_STARTED, &desc, sizeof(desc));
 	work_queue_run(LIFE_LED_GPIO);
 
 	return 0;
