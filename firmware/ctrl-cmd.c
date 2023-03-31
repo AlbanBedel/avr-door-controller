@@ -25,7 +25,7 @@ struct ctrl_cmd_handler {
 void ctrl_cmd_init_device_descriptor(struct device_descriptor *desc)
 {
 	desc->major_version = 0;
-	desc->minor_version = 2;
+	desc->minor_version = 3;
 	desc->num_doors = NUM_DOORS;
 	desc->num_access_records = NUM_ACCESS_RECORDS;
 	desc->free_access_records = eeprom_get_free_access_record_count();
@@ -91,6 +91,21 @@ static int8_t ctrl_cmd_get_access_record(
 				    &record, sizeof(record));
 }
 
+static int8_t ctrl_cmd_get_access_record_v2(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct ctrl_cmd_get_access_record *get = payload;
+	struct access_record_v2 record;
+	int8_t err;
+
+	err = eeprom_read_access_record(get->index, &record);
+	if (err)
+		return err;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK,
+				    &record, sizeof(record));
+}
+
 static int8_t ctrl_cmd_set_access_record(
 	struct ctrl_transport *ctrl, const void *payload)
 {
@@ -98,6 +113,19 @@ static int8_t ctrl_cmd_set_access_record(
 	int8_t err;
 
 	err = eeprom_set_access_record(set->index, &set->record);
+	if (err)
+		return err;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
+static int8_t ctrl_cmd_set_access_record_v2(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct ctrl_cmd_set_access_record_v2 *set = payload;
+	int8_t err;
+
+	err = eeprom_write_access_record(set->index, &set->record);
 	if (err)
 		return err;
 
@@ -117,6 +145,19 @@ static int8_t ctrl_cmd_set_access(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
+static int8_t ctrl_cmd_set_access_v2(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct access_record_v2 *record = payload;
+	int8_t err;
+
+	err = eeprom_save_access_record(record);
+	if (err)
+		return err;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
 static int8_t ctrl_cmd_get_access(
 	struct ctrl_transport *ctrl, const void *payload)
 {
@@ -129,6 +170,20 @@ static int8_t ctrl_cmd_get_access(
 		doors = 0;
 
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &doors, sizeof(doors));
+}
+
+static int8_t ctrl_cmd_get_access_v2(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct ctrl_cmd_get_access_v2 *get = payload;
+	struct access_record_v2 record;
+	int8_t err;
+
+	err = eeprom_load_access_record(get->type, get->card, get->pin, &record, NULL);
+	if (err < 0)
+		return err;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &record, sizeof(record));
 }
 
 static int8_t ctrl_cmd_remove_all_access(
@@ -179,6 +234,46 @@ static int8_t ctrl_cmd_get_used_access(
 		break;
 	}
 
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &resp, sizeof(resp));
+}
+
+static int8_t access_record_is_used(
+	const struct access_record_hdr *hdr, const void *val)
+{
+	return hdr->used;
+}
+
+static int8_t ctrl_cmd_get_used_access_v2(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct ctrl_cmd_get_used_access *get = payload;
+	struct ctrl_cmd_resp_used_access_v2 resp;
+	uint16_t idx;
+	int8_t err;
+
+	/* We use 0 as the start of the iteration, but the internal API
+	 * needs a negative value as initial index. Offset the iteration
+	 * index by one to cope with that. */
+	if (get->start == 0)
+		idx = ACCESS_RECORD_ITER_START;
+	else
+		idx = get->start - 1;
+
+	/* Get the next used record */
+	err = eeprom_get_next_access_record(
+		&idx, &resp.record, access_record_is_used, NULL);
+	if (err)
+		return err;
+
+	/* Clear the used flag */
+	if (get->clear) {
+		resp.record.hdr.used = 0;
+		err = eeprom_write_access_record(idx, &resp.record);
+		if (err)
+			return err;
+	}
+
+	resp.index = idx + 1;
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &resp, sizeof(resp));
 }
 
@@ -238,9 +333,19 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.handler = ctrl_cmd_get_access_record,
 	},
 	{
+		.type    = CTRL_CMD_GET_ACCESS_RECORD_V2,
+		.length  = sizeof(struct ctrl_cmd_get_access_record),
+		.handler = ctrl_cmd_get_access_record_v2,
+	},
+	{
 		.type    = CTRL_CMD_SET_ACCESS_RECORD,
 		.length  = sizeof(struct ctrl_cmd_set_access_record),
 		.handler = ctrl_cmd_set_access_record,
+	},
+	{
+		.type    = CTRL_CMD_SET_ACCESS_RECORD_V2,
+		.length  = sizeof(struct ctrl_cmd_set_access_record_v2),
+		.handler = ctrl_cmd_set_access_record_v2,
 	},
 	{
 		.type    = CTRL_CMD_SET_ACCESS,
@@ -248,9 +353,19 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.handler = ctrl_cmd_set_access,
 	},
 	{
+		.type    = CTRL_CMD_SET_ACCESS_V2,
+		.length  = sizeof(struct access_record_v2),
+		.handler = ctrl_cmd_set_access_v2,
+	},
+	{
 		.type    = CTRL_CMD_GET_ACCESS,
 		.length  = sizeof(struct access_record),
 		.handler = ctrl_cmd_get_access,
+	},
+	{
+		.type    = CTRL_CMD_GET_ACCESS_V2,
+		.length  = sizeof(struct access_record_v2),
+		.handler = ctrl_cmd_get_access_v2,
 	},
 	{
 		.type    = CTRL_CMD_REMOVE_ALL_ACCESS,
@@ -261,6 +376,11 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_GET_USED_ACCESS,
 		.length  = sizeof(struct ctrl_cmd_get_used_access),
 		.handler = ctrl_cmd_get_used_access,
+	},
+	{
+		.type    = CTRL_CMD_GET_USED_ACCESS_V2,
+		.length  = sizeof(struct ctrl_cmd_get_used_access),
+		.handler = ctrl_cmd_get_used_access_v2,
 	},
 	{
 		.type    = CTRL_CMD_GET_TIME,

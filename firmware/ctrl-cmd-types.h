@@ -73,6 +73,32 @@ struct ctrl_msg {
  */
 #define CTRL_CMD_GET_USED_ACCESS	25
 
+/* Input:  struct ctrl_cmd_get_access_record
+ * Output: struct access_record_v2
+ */
+#define CTRL_CMD_GET_ACCESS_RECORD_V2	30
+
+/* Input:  struct ctrl_cmd_set_access_record_v2
+ * Output: none
+ */
+#define CTRL_CMD_SET_ACCESS_RECORD_V2	31
+
+/* Input:  struct access_record_v2
+ * Output: none
+ */
+#define CTRL_CMD_SET_ACCESS_V2		32
+
+/* Input:  struct ctrl_cmd_get_access_v2
+ * Output: struct access_record_v2
+ */
+#define CTRL_CMD_GET_ACCESS_V2		33
+
+/* Input:  struct ctrl_cmd_get_used_access
+ * Output: struct ctrl_cmd_resp_used_access_v2
+ */
+#define CTRL_CMD_GET_USED_ACCESS_V2	34
+
+
 /* Payload depend on the query */
 #define CTRL_CMD_OK			0
 /* Payload is an error code (int8_t) */
@@ -111,6 +137,17 @@ struct ctrl_cmd_set_access_record {
 	struct access_record record;
 } PACKED;
 
+struct ctrl_cmd_set_access_record_v2 {
+	uint16_t index;
+	struct access_record_v2 record;
+} PACKED;
+
+struct ctrl_cmd_get_access_v2 {
+	uint8_t type;
+	uint32_t card;
+	uint32_t pin;
+} PACKED;
+
 struct ctrl_cmd_get_used_access {
 	uint16_t start;
 	uint8_t clear;
@@ -119,6 +156,11 @@ struct ctrl_cmd_get_used_access {
 struct ctrl_cmd_resp_used_access {
 	uint16_t index;
 	struct access_record record;
+} PACKED;
+
+struct ctrl_cmd_resp_used_access_v2 {
+	uint16_t index;
+	struct access_record_v2 record;
 } PACKED;
 
 #endif /* CTRL_CMD_TYPES_H */
