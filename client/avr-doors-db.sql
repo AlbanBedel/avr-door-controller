@@ -63,13 +63,13 @@ CREATE FUNCTION HOTP(secret VARBINARY(64), cnt BIGINT UNSIGNED, digits INT UNSIG
                 RETURNS VARCHAR(10) DETERMINISTIC
 BEGIN
 DECLARE hmac CHAR(40);
-DECLARE offset INT UNSIGNED;
+DECLARE pin_offset INT UNSIGNED;
 DECLARE bin_code INT UNSIGNED;
 
 SET hmac = HMAC_SHA1(secret, UNHEX(LPAD(HEX(cnt), 16, '0')));
-SET offset = CONV(MID(hmac, 1 + 19*2 + 1, 1), 16, 10);
-SET bin_code = CONV(CONCAT(CONV(CONV(MID(hmac, 1 + offset * 2, 2), 16, 10) & 0x7F, 10, 16),
-                           MID(hmac, 1 + (offset + 1) * 2, 6)),
+SET pin_offset = CONV(MID(hmac, 1 + 19*2 + 1, 1), 16, 10);
+SET bin_code = CONV(CONCAT(CONV(CONV(MID(hmac, 1 + pin_offset * 2, 2), 16, 10) & 0x7F, 10, 16),
+                           MID(hmac, 1 + (pin_offset + 1) * 2, 6)),
 	            16, 10);
 
 RETURN LPAD(bin_code % POW(10, digits), digits, '0');
@@ -182,15 +182,15 @@ create table if not exists DoorOTP (
 
 create table if not exists DoorOTPOffset (
 	DoorOTPID int unsigned not null,
-	Offset int not null default 0,
+	`Offset` int not null default 0,
 
 	foreign key (DoorOTPID) references DoorOTP(DoorOTPID)
 		on update cascade on delete cascade,
-	unique key(DoorOTPID, Offset)
+	unique key(DoorOTPID, `Offset`)
 );
 
 create or replace view DoorOTPPin as
-	select DoorID, HOTP(Secret, floor(unix_timestamp() / Period) + Offset, Digits) as PIN
+	select DoorID, HOTP(Secret, floor(unix_timestamp() / Period) + `Offset`, Digits) as PIN
 	from DoorOTPOffset
 	left join DoorOTP on (DoorOTPOffset.DoorOTPID = DoorOTP.DoorOTPID);
 
