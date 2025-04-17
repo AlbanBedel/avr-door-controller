@@ -87,10 +87,14 @@ class ObjectList(object):
         self._refs = list(cursor) if len(idx_columns) > 1 else [c[0] for c in cursor]
         self._instances = {}
 
+    def _new_item(self, *args, **kwargs):
+        # Use our __delitem__ as .delete method so we keep our array in sync
+        return self._itemClass(self._obj._db, *args, deleter=self.remove, **kwargs)
+
     def __getitem__(self, idx):
         ref = self._refs[idx]
         if ref not in self._instances:
-            self._instances[ref] = self._itemClass(self._obj._db, ref)
+            self._instances[ref] = self._new_item(ref)
         return self._instances[ref]
 
     def __len__(self):
@@ -106,7 +110,7 @@ class ObjectList(object):
             del self._instances[ref]
 
     def append(self, *args, **kwargs):
-        item = self._itemClass(self._obj._db)
+        item = self._new_item()
         cols = list((c.name for c in self._itemClass.index_columns()))
         # Pass the values from the parent object
         for c in self._obj.index_columns():
@@ -127,13 +131,23 @@ class ObjectList(object):
         self._refs.append(item.id)
         self._instances[item.id] = item
 
+    def index(self, item):
+        return self._refs.index(item.id)
+
+    def remove(self, item):
+        idx = self.index(item)
+        if idx < 0:
+            raise ValueError(f'item {item.id} not in list')
+        self.__delitem__(idx)
+
 class Object(object):
     table = None
 
-    def __init__(self, db, oid = None, cond = None):
+    def __init__(self, db, oid = None, cond = None, deleter = None):
         self._db = db
         self._id = None
         self._exists = False
+        self._deleter = deleter
         if oid != None:
             self.load(oid, cond)
 
@@ -241,7 +255,13 @@ class Object(object):
         db.commit()
 
     def delete(self):
-        self.delete_objects(self._db, self.id)
+        if not self._exists:
+            raise ValueError("Object not in the database can't be deleted")
+        if self._deleter:
+            self._deleter(self)
+        else:
+            self.delete_objects(self._db, self.id)
+        self._exists = False
 
     def save(self):
         columns = self.save_columns()
