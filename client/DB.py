@@ -79,11 +79,12 @@ class ObjectList(object):
         itemClass = self._itemClass
         obj = self._obj
         cursor = self._obj._db.cursor()
+        idx_columns = itemClass.index_columns()
         query = "select %s from %s where %s" % (
-            itemClass.columns_name(*itemClass.index_columns()),
+            itemClass.columns_name(*idx_columns),
             self._list_table, obj.columns_condition(*obj.index_columns()))
         cursor.execute(query, obj.match_value(obj.id))
-        self._refs = list(cursor)
+        self._refs = list(cursor) if len(idx_columns) > 1 else [c[0] for c in cursor]
         self._instances = {}
 
     def __getitem__(self, idx):
