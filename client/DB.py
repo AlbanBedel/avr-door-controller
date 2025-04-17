@@ -170,11 +170,11 @@ class Object(object):
 
     @classmethod
     def columns_name(cls, *columns):
-        return ", ".join((c.name for c in columns))
+        return ", ".join((f'`{c.name}`' for c in columns))
 
     @classmethod
     def columns_condition(cls, *columns):
-        return " and ".join(("%s <=> %%s" % c.name for c in columns))
+        return " and ".join(("`%s` <=> %%s" % c.name for c in columns))
 
     @staticmethod
     def match_value(value):
@@ -244,7 +244,7 @@ class Object(object):
 
     def save(self):
         columns = self.save_columns()
-        sets = ", ".join(("%s = %%s" % c.name for c in columns))
+        sets = ", ".join(("`%s` = %%s" % c.name for c in columns))
         args = self.columns_raw_value(*columns)
         cursor = self._db.cursor()
         if not self._exists:
