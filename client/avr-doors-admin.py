@@ -386,6 +386,10 @@ class DoorActions(Actions):
             print("Controller:\t%s" % door.controller.location)
         if door.index is not None:
             print("Port:\t\t%d" % door.index)
+        if len(door.otp) > 0:
+            print("One Time PIN:")
+            for o in door.otp:
+                print("\t%s" % o)
         if len(door.access) > 0:
             print("Access Records:")
             for a in door.access:
@@ -402,6 +406,20 @@ class DoorActions(Actions):
     def remove_access(self, door, user, group, pin):
         door = self.cls(self.db, door)
         door.remove_access(user, group, pin)
+
+    def add_otp(self, door, digits, period, window_start, window_end, issuer=None):
+        door = self.cls(self.db, door)
+        otp = door.add_otp(digits, period, window_start, window_end)
+        print(otp.uri(issuer))
+
+    def remove_otp(self, door, otp):
+        door = self.cls(self.db, door)
+        door.remove_otp(otp)
+
+    def show_otp_uri(self, door, otp, issuer=None):
+        door = self.cls(self.db, door)
+        otp = door.get_otp(otp)
+        print(otp.uri(issuer))
 
 if __name__ == '__main__':
     import argparse
@@ -833,6 +851,47 @@ if __name__ == '__main__':
         '--pin', metavar = 'PIN', type = str,
         help = 'PIN for this access')
 
+    subparser = action_subparsers.add_parser(
+        'add-otp', help = 'Show the URI for OTP QR codes')
+    subparser.add_argument(
+        'door', metavar = 'DOOR', type = str,
+        help = 'Location or ID of the door')
+    subparser.add_argument(
+        '--digits', metavar = 'DIGITS', type = int, default=6,
+        help = 'Number of digits')
+    subparser.add_argument(
+        '--period', metavar = 'PERIOD', type = int, default=24*3600,
+        help = 'Period of the OTP in seconds')
+    subparser.add_argument(
+        '--window-start', metavar = 'AT', type = int, default=-1,
+        help = 'Start of the validty window in periods')
+    subparser.add_argument(
+        '--window-end', metavar = 'AT', type = int, default=0,
+        help = 'End of the validty window in periods')
+
+    subparser = action_subparsers.add_parser(
+        'remove-otp', help = 'Remove an OTP')
+    subparser.add_argument(
+        'door', metavar = 'DOOR', type = str,
+        help = 'Location or ID of the door')
+    subparser.add_argument(
+        'otp', metavar = 'OTP', type = str,
+        default = os.environ.get('OTP_ISSUER'),
+        help = 'Name or index of the OTP')
+
+    subparser = action_subparsers.add_parser(
+        'show-otp-uri', help = 'Show the URI for OTP QR codes')
+    subparser.add_argument(
+        'door', metavar = 'DOOR', type = str,
+        help = 'Location or ID of the door')
+    subparser.add_argument(
+        'otp', metavar = 'OTP', type = str,
+        default = os.environ.get('OTP_ISSUER'),
+        help = 'Name or index of the OTP')
+    subparser.add_argument(
+        '--issuer', metavar = 'ISSUER', type = str,
+        default = os.environ.get('OTP_ISSUER'),
+        help = 'Issuer name to set in the URI')
     args = parser.parse_args()
 
     # Get the class and action
