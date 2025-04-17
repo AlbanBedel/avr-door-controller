@@ -1,6 +1,9 @@
 import DB
-from datetime import datetime
+from datetime import datetime, timedelta
 import bcrypt
+import base64
+import urllib.parse
+import secrets
 
 class APIObject(DB.Object):
     href_format = None
@@ -258,6 +261,7 @@ class Door(APIObject):
         a.until = until
         a.admin = admin
         a.save()
+        return a
 
     def update_access(self, user = None, group = None, pin = None,
                       new_pin = None, since = None, until = None,
@@ -295,6 +299,32 @@ class Door(APIObject):
         except ValueError:
             return False
         return bool(access and access.admin)
+
+    def get_otp(self, otp):
+        try:
+            idx = int(otp)
+            match = lambda o: o.id == idx
+        except ValueError:
+            match = lambda o: o.name == otp
+
+        for o in self.otp:
+            if match(o):
+                return o
+        raise KeyError(f'OTP {otp} not found')
+
+    def add_otp(self, digits, period, window_start=0, window_end=0):
+        otp = DoorOTP(self._db)
+        otp.door = self
+        otp.generate_secret()
+        otp.digits = digits
+        otp.period = period
+        otp.save()
+        otp.window = (window_start, window_end)
+        return otp
+
+    def remove_otp(self, otp):
+        otp = self.get_otp(otp)
+        otp.delete()
 
 class Access(object):
     def valid(self):
@@ -367,6 +397,95 @@ class DoorAccess(APIObject, Access):
             desc = "All"
         return desc + self.describe_condition()
 
+class DoorOTP(APIObject):
+    table = 'DoorOTP'
+
+    door_otp_id = DB.Column('DoorOTPID',
+                            index = True, writable = False)
+    door = DB.Column('DoorID', Door)
+    secret = DB.Column('Secret')
+    digits = DB.Column('Digits')
+    period = DB.Column('Period')
+
+    secret_size = 64
+
+    def generate_secret(self):
+        self.secret = secrets.token_bytes(self.secret_size)
+
+    def __str__(self):
+        period = timedelta(seconds=self.period)
+        return f'{self.id}: {self.digits} digits, period of {period}, window {self.window}'
+
+    @property
+    def name(self):
+        return self.door.location
+
+    def uri(self, issuer=None):
+        query = [
+            ('secret', base64.b32encode(self.secret).decode().rstrip('=')),
+            ('period', str(self.period)),
+        ]
+        name = self.name
+        if issuer is not None:
+            query.append(('issuer', issuer))
+            name = f'{issuer}:{name}'
+        return f'otpauth://totp/{urllib.parse.quote(name)}?{urllib.parse.urlencode(query)}'
+
+    @property
+    def offsets(self):
+        return tuple(sorted((o.offset for o in self._offsets)))
+
+    @property
+    def ranges(self):
+        offsets = self.offsets
+        ret = []
+        start = None
+        end = None
+        for o in offsets:
+            if end != None:
+                if o == end+1:
+                    end = o
+                    continue
+                ret.append((start, end))
+            start = o
+            end = start
+        if end != None:
+            ret.append((start, end))
+        return tuple(ret)
+
+    @property
+    def window(self):
+        ranges = self.ranges
+        if len(ranges) > 0:
+            return ranges[0]
+        else:
+            return None
+
+    @window.setter
+    def window(self, r):
+        if len(r) != 2:
+            raise TypeError('Window must be a tuple of 2 items')
+        if r[0] > r[1]:
+            raise ValueError('Window start must be lower then end')
+
+        cur_offsets = set(self.offsets)
+        new_offsets = set(range(r[0], r[1]+1))
+
+        rm_offsets = cur_offsets - new_offsets
+        to_delete = tuple((o for o in self._offsets if o.offset in rm_offsets))
+        for o in to_delete:
+            o.delete()
+
+        add_offsets = new_offsets - cur_offsets
+        for o in add_offsets:
+            self._offsets.append(offset=o)
+
+class DoorOTPOffset(DB.Object):
+    table = 'DoorOTPOffset'
+
+    door_otp_id = DB.Column('DoorOTPID', index = True)
+    offset = DB.Column('Offset', index = True)
+
 class ControllerSetACLDoors(object):
     @classmethod
     def decode(cls, ctrl_acl, doors_mask):
@@ -395,10 +514,12 @@ User.doors = DB.List(DoorAccess)
 Group.doors = DB.List(DoorAccess)
 Door.access = DB.List(DoorAccess)
 
+Door.otp = DB.List(DoorOTP)
+DoorOTP._offsets = DB.List(DoorOTPOffset)
 
 if __name__ == '__main__':
     import MySQLdb as dbapi2
-    db = dbapi2.connect(db='AVRDoors')
+    db = dbapi2.connect(db='AVRDoors', host='127.0.0.1')
     u = User(db, 1)
     for gu in u.groups:
         print("%s" % (gu.group.name,))
@@ -410,3 +531,7 @@ if __name__ == '__main__':
     d = Door(db, 1)
     for a in d.access:
         print(a.describe_who())
+    for o in d.otp:
+        print(o.ranges)
+        o.range = (-1, 0)
+        print(o.ranges)
