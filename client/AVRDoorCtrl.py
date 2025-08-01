@@ -7,6 +7,7 @@ import ubus
 import json
 import time
 import calendar
+import logging
 from urllib.parse import urldefrag
 
 class AVRDoorCtrlUartTransport(object):
@@ -181,7 +182,7 @@ class AVRDoorCtrlSerialHandler(object):
 
     def read_msg(self):
         type, payload = self._transport.read_msg()
-        #print("Got %02x - %s" % (type, payload))
+        logging.debug("Got %02x - %s" % (type, ":".join("{:02x}".format(c) for c in payload)))
         return type, payload
 
     def read_event(self):
@@ -192,7 +193,9 @@ class AVRDoorCtrlSerialHandler(object):
         return self.parse_event(type, payload)
 
     def send_msg(self, type, payload = None):
-        #print("W: %02x - %s" % (type, payload))
+        desc = (" - " + ":".join("{:02x}".format(c) for c in payload)) \
+            if payload is not None else ""
+        logging.debug("Send: %02x%s" % (type, desc))
         self._transport.send_msg(type, payload)
 
     def strerror(self, err):
@@ -528,6 +531,9 @@ if __name__ == '__main__':
         '--username', help = 'Username for UBus access')
     parser.add_argument(
         '--password', help = 'Password for UBus access')
+    parser.add_argument(
+        '--log-level', choices=('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'),
+        help = 'Log level', default='WARNING')
 
     # Method parsers
     method_subparsers = parser.add_subparsers(dest='method')
@@ -625,6 +631,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    log_level = getattr(logging, args.log_level.upper())
+    del args.log_level
+
     url = args.url
     del args.url
 
@@ -638,5 +647,6 @@ if __name__ == '__main__':
             url_kwargs[f] = v
         delattr(args, f)
 
+    logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
     door = AVRDoorCtrlTool(url, **url_kwargs)
     print(getattr(door, method).__call__(**vars(args)))
