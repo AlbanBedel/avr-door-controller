@@ -169,6 +169,7 @@ class AVRDoorCtrlSerialHandler(object):
 
     def __init__(self, dev, *args, **kwargs):
         self._events = []
+        self._descriptor = None
         if dev.startswith('/dev/tty'):
             self._transport = AVRDoorCtrlUartTransport(dev, *args, **kwargs)
         else:
@@ -176,9 +177,21 @@ class AVRDoorCtrlSerialHandler(object):
         try:
             type, payload = self.read_msg()
             if type != self.EVENT_STARTED:
-                print("Warning: Got bad start event\n")
+                raise TypeError("Initial event is not a start event")
+
+            if len(payload) > 0:
+                self._descriptor = self.unpack_device_descriptor(payload)
+                version = self._descriptor['version']
+            else:
+                # Version 0.2 doesn't send the device descriptor at start
+                version = '0.2'
+        except TimeoutError:
+            # Version 0.1 doesn't send a start event at all
+            version = '0.1'
         except:
-            pass
+            raise
+
+        logging.info(f"Device version {version} started")
 
     def read_msg(self):
         type, payload = self._transport.read_msg()
@@ -244,9 +257,8 @@ class AVRDoorCtrlSerialHandler(object):
                 s += '%d' % d
         return s
 
-    def get_device_descriptor(self):
-        response = self.send_cmd(
-            self.CMD_GET_DEVICE_DESCRIPTOR, None, 5)
+    @staticmethod
+    def unpack_device_descriptor(response):
         major, minor, doors, records = struct.unpack("<BBBH", response[0:5])
         ret = {
             "version": "%d.%d" % (major, minor),
@@ -256,6 +268,13 @@ class AVRDoorCtrlSerialHandler(object):
         if len(response) > 5:
             ret["free_access_records"], = struct.unpack("<H", response[5:7])
         return ret
+
+    def get_device_descriptor(self):
+        if self._descriptor:
+            return self._descriptor
+        response = self.send_cmd(
+            self.CMD_GET_DEVICE_DESCRIPTOR, None, 5)
+        return self.unpack_device_descriptor(response)
 
     def get_door_config(self, index):
         response = self.send_cmd(self.CMD_GET_DOOR_CONFIG,
