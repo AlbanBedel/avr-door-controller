@@ -560,7 +560,7 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
         return {}
 
 if __name__ == '__main__':
-    import binascii, argparse
+    import binascii, argparse, sys
 
     # Main parser
     parser = argparse.ArgumentParser(
@@ -691,4 +691,9 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
     door = AVRDoorCtrlTool(url, **url_kwargs)
-    print(getattr(door, method).__call__(**vars(args)))
+    try:
+        result = getattr(door, method).__call__(**vars(args))
+    except AVRDoorCtrlError as err:
+        result = {'errno': err.errno, 'error': str(err)}
+    print(json.dumps(result))
+    sys.exit(result.get('errno', 0))
