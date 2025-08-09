@@ -125,6 +125,47 @@ class AVRDoorCtrlUartTransport(object):
         # And send it out
         self._tty.write(pkt)
 
+class AVRDoorCtrlError(Exception):
+    EPERM = 1
+    ENOENT = 2
+    EINTR = 4
+    EIO = 5
+    E2BIG = 7
+    ENOMEM = 12
+    EFAULT = 14
+    EBUSY = 16
+    EEXIST = 17
+    ENODEV = 19
+    EINVAL = 22
+    ENOSPC = 28
+    ERANGE = 34
+
+    _errors = {
+        EPERM: "Operation not permitted",
+        ENOENT: "No such file or directory",
+        EINTR: "Interrupted system call",
+        EIO: "I/O error",
+        E2BIG: "Argument list too long",
+        ENOMEM: "Out of memory",
+        EFAULT: "Bad address",
+        EBUSY: "Device or resource busy",
+        EEXIST: "File exists",
+        ENODEV: "No such device",
+        EINVAL: "Invalid argument",
+        ENOSPC: "No space left on device",
+        ERANGE: "Out of range",
+    }
+
+    def __init__(self, errno):
+        self.errno = errno
+
+    @classmethod
+    def strerror(cls, errno):
+        return cls._errors.get(errno, f"Error {errno}")
+
+    def __str__(self):
+        return self.strerror(self.errno)
+
 class AVRDoorCtrlSerialHandler(object):
     CMD_GET_DEVICE_DESCRIPTOR = 0
     CMD_GET_TIME = 2
@@ -151,21 +192,6 @@ class AVRDoorCtrlSerialHandler(object):
     ACCESS_TYPE_CARD = 2
     ACCESS_TYPE_CARD_AND_PIN = ACCESS_TYPE_CARD | ACCESS_TYPE_PIN
 
-    _errors = {
-        1: "Operation not permitted",
-        2: "No such file or directory",
-        4: "Interrupted system call",
-        5: "I/O error",
-        7: "Argument list too long",
-        12: "Out of memory",
-        14: "Bad address",
-        16: "Device or resource busy",
-        17: "File exists",
-        19: "No such device",
-        22: "Invalid argument",
-        28: "No space left on device",
-        32: "Out of range",
-    }
 
     def __init__(self, dev, *args, **kwargs):
         self._events = []
@@ -211,9 +237,6 @@ class AVRDoorCtrlSerialHandler(object):
         logging.debug("Send: %02x%s" % (type, desc))
         self._transport.send_msg(type, payload)
 
-    def strerror(self, err):
-        return self._errors.get(err, f"Error {err}")
-
     def send_cmd(self, type, payload = None, response_size=0):
         self.send_msg(type, payload)
         # Read the incoming messages, but queue the events
@@ -228,7 +251,7 @@ class AVRDoorCtrlSerialHandler(object):
             if len(response) < 1:
                 raise Exception("Invalid error reply")
             errno, = struct.unpack("b", response)
-            raise Exception(self.strerror(-errno))
+            raise AVRDoorCtrlError(-errno)
         # Make sure we got an OK
         if reply != self.REPLY_OK:
             raise Exception("Bad reply type: %d" % reply)
