@@ -559,6 +559,19 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
         self.set_all_access_records(acl)
         return {}
 
+def add_parser_arguments_access_record(method_parser):
+    method_parser.add_argument(
+        '--card', type = int, help = 'Card number')
+    method_parser.add_argument(
+        '--pin', help = 'PIN with 1 to 8 digits')
+
+def add_parser_arguments_access_record_properties(method_parser):
+    method_parser.add_argument(
+        '--used', action='store_true', help = 'Mark the record as used')
+    method_parser.add_argument(
+        '--doors', type = int, required = True,
+        help = 'Bitmask of the doors that can be opened')
+
 if __name__ == '__main__':
     import binascii, argparse, sys
 
@@ -609,32 +622,17 @@ if __name__ == '__main__':
     method_parser.add_argument(
         '--index', type = int, required = True,
         help = 'Access record index')
-    method_parser.add_argument(
-        '--card', type = int, help = 'Card number')
-    method_parser.add_argument(
-        '--pin', help = 'PIN with 1 to 8 digits')
-    method_parser.add_argument(
-        '--used', action='store_true', help = 'Mark the record as used')
-    method_parser.add_argument(
-        '--doors', type = int, required = True,
-        help = 'Bitmask of the doors that can be opened')
+    add_parser_arguments_access_record(method_parser)
+    add_parser_arguments_access_record_properties(method_parser)
 
     method_parser = method_subparsers.add_parser(
         'set_access', help = 'Add or remove access to a card and/or pin')
-    method_parser.add_argument(
-        '--card', type = int, help = 'Card number')
-    method_parser.add_argument(
-        '--pin', help = 'PIN with 1 to 8 digits')
-    method_parser.add_argument(
-        '--doors', type = int, required = True,
-        help = 'Bitmask of the doors that can be opened with this card and/or pin')
+    add_parser_arguments_access_record(method_parser)
+    add_parser_arguments_access_record_properties(method_parser)
 
     method_parser = method_subparsers.add_parser(
         'get_access', help = 'Get the access for a card and/or pin')
-    method_parser.add_argument(
-        '--card', type = int, help = 'Card number')
-    method_parser.add_argument(
-        '--pin', help = 'PIN with 1 to 8 digits')
+    add_parser_arguments_access_record(method_parser)
 
     method_parser = method_subparsers.add_parser(
         'get_used_access',
