@@ -187,6 +187,8 @@ class AVRDoorCtrlSerialHandler(object):
 
     EVENT_BASE = 127
     EVENT_STARTED = EVENT_BASE + 0
+    EVENT_ACCESS = EVENT_BASE + 1
+    EVENT_DOOR_STATUS = EVENT_BASE + 2
 
     REPLY_OK = 0
     REPLY_ERROR = 255
@@ -659,6 +661,25 @@ class AVRDoorCtrlSerialHandler(object):
         if type == self.EVENT_STARTED:
             return {
                 'event': 'started',
+            }
+        elif type == self.EVENT_ACCESS:
+            access, card, pin = struct.unpack("<BLL", payload)
+            ev = {
+                'event': 'access',
+                'door': access & 0xF,
+                'type': self.access_record_types[(access >> 4) & 0x3],
+                'granted': (access >> 6) & 0x1,
+            }
+            if ev['type'] in ('pin', 'card+pin'):
+                ev['pin'] = self.unpack_pin(pin)
+            if ev['type'] in ('card', 'card+pin'):
+                ev['card'] = card
+            return ev
+        elif type == self.EVENT_DOOR_STATUS:
+            state = struct.unpack("<B", payload)
+            return {
+                'door': state & 0xF,
+                'open': (state >> 4) & 1,
             }
         else:
             return {
