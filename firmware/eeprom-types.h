@@ -24,15 +24,15 @@ struct access_record {
 struct door_config {
 	/* Time the door should stay open in ms */
 	uint16_t open_time;
-
-	/* Start and end time for open access */
-	uint16_t open_access_start_time;
-	uint16_t open_access_end_time;
-	/* Bitmask of the week days with open access */
-	uint8_t open_access_days;
-
 	/* Reserved */
-	uint8_t reserved[];
+	uint8_t reserved[2];
+} PACKED;
+
+#define CONTROLLER_KEY_SIZE		20
+
+struct controller_config {
+	/* Device specific PRK, the result of the first stage of HKDF */
+	uint8_t root_key[CONTROLLER_KEY_SIZE];
 } PACKED;
 
 #define ACCESS_RECORD_TYPE_CARD_NONE	0

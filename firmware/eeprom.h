@@ -4,12 +4,13 @@
 #include "eeprom-types.h"
 
 #define ACCESS_RECORDS_SIZE \
-	(EEPROM_SIZE - NUM_DOORS * sizeof(struct door_config))
+	(EEPROM_SIZE - sizeof(struct controller_config) - NUM_DOORS * sizeof(struct door_config))
 
 #define NUM_ACCESS_RECORDS \
-	(ACCESS_RECORDS_SIZE / sizeof(struct access_record))
+	(ACCESS_RECORDS_SIZE / sizeof(struct access_record_entry))
 
 struct eeprom_config {
+	struct controller_config ctrl;
 	struct door_config door[NUM_DOORS];
 	struct access_record_entry access[NUM_ACCESS_RECORDS];
 };
@@ -64,6 +65,10 @@ int8_t eeprom_write_access_record(
 
 int8_t eeprom_update_access_record_hdr(
 	uint16_t idx, const struct access_record_hdr *hdr);
+
+int8_t eeprom_get_controller_config(struct controller_config *cfg);
+
+int8_t eeprom_set_controller_config(const struct controller_config *cfg);
 
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg);
 

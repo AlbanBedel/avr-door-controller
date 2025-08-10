@@ -5,7 +5,7 @@
 #include "eeprom-types.h"
 
 #define CTRL_MSG_HEADER_SIZE		2
-#define CTRL_MSG_MAX_PAYLOAD_SIZE	16
+#define CTRL_MSG_MAX_PAYLOAD_SIZE	20
 
 struct ctrl_msg {
 	uint8_t type;
@@ -32,6 +32,16 @@ struct ctrl_msg {
  * Output: none
  */
 #define CTRL_CMD_SET_TIME		3
+
+/* Input:  none
+ * Output: struct controller_config
+ */
+#define CTRL_CMD_GET_CONTROLLER_CONFIG	4
+
+/* Input:  struct controller_config
+ * Output: none
+ */
+#define CTRL_CMD_SET_CONTROLLER_CONFIG	5
 
 /* Input:  struct struct ctrl_cmd_get_door_config
  * Output: struct door_config

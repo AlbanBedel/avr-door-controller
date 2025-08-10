@@ -351,6 +351,18 @@ void eeprom_remove_all_access(void)
 	}
 }
 
+int8_t eeprom_get_controller_config(struct controller_config *cfg)
+{
+	eeprom_read_block(cfg, &config.ctrl, sizeof(*cfg));
+	return 0;
+}
+
+int8_t eeprom_set_controller_config(const struct controller_config *cfg)
+{
+	eeprom_write_block(cfg, &config.ctrl, sizeof(*cfg));
+	return 0;
+}
+
 int8_t eeprom_get_door_config(uint8_t id, struct door_config *cfg)
 {
 	if (id >= ARRAY_SIZE(config.door))

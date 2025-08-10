@@ -306,6 +306,57 @@ static int8_t ctrl_cmd_set_time(
 	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
 }
 
+static int8_t ctrl_cmd_get_controller_config(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	struct controller_config cfg;
+	int8_t err;
+
+	err = eeprom_get_controller_config(&cfg);
+	if (err < 0)
+		return err;
+
+	if (!DEBUG)
+		memset(cfg.root_key, 0, sizeof(cfg.root_key));
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, &cfg, sizeof(cfg));
+}
+
+static int8_t is_all_zero(const void *data, uint8_t size)
+{
+	const uint8_t *vals = data;
+	uint8_t i;
+
+	for (i = 0; i < size; i++)
+		if (vals[i])
+			return 0;
+	return 1;
+}
+
+static int8_t ctrl_cmd_set_controller_config(
+	struct ctrl_transport *ctrl, const void *payload)
+{
+	const struct controller_config *new_cfg = payload;
+	struct controller_config cfg = *new_cfg;
+	int8_t err;
+
+	/* If no key is provided keep the current one */
+	if (is_all_zero(new_cfg->root_key, sizeof(new_cfg->root_key))) {
+		struct controller_config current_cfg;
+		err = eeprom_get_controller_config(&current_cfg);
+		if (err < 0)
+			return err;
+		memcpy(cfg.root_key, current_cfg.root_key,
+		       sizeof(cfg.root_key));
+	}
+
+	err = eeprom_set_controller_config(&cfg);
+	if (err < 0)
+		return err;
+
+	return ctrl_transport_reply(ctrl, CTRL_CMD_OK, NULL, 0);
+}
+
 static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 	{
 		.type    = CTRL_CMD_GET_DEVICE_DESCRIPTOR,
@@ -391,6 +442,16 @@ static const struct ctrl_cmd_desc ctrl_cmd_desc[] PROGMEM = {
 		.type    = CTRL_CMD_SET_TIME,
 		.length  = sizeof(time_t),
 		.handler = ctrl_cmd_set_time,
+	},
+	{
+		.type    = CTRL_CMD_GET_CONTROLLER_CONFIG,
+		.length  = 0,
+		.handler = ctrl_cmd_get_controller_config,
+	},
+	{
+		.type    = CTRL_CMD_SET_CONTROLLER_CONFIG,
+		.length  = sizeof(struct controller_config),
+		.handler = ctrl_cmd_set_controller_config,
 	},
 };
 
