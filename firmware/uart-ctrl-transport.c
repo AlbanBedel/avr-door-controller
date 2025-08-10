@@ -195,8 +195,12 @@ int8_t ctrl_transport_reply(struct ctrl_transport *ctrl, uint8_t type,
 	ctrl->state = UART_CTRL_TRANSPORT_SEND_REPLY;
 	/* And write it out */
 	err = ctrl_transport_write(ctrl, type, payload, length);
-	if (err)
-		ctrl->state = UART_CTRL_TRANSPORT_SYNC;
+	if (err) {
+		if (type == CTRL_CMD_ERROR)
+			ctrl->state = UART_CTRL_TRANSPORT_SYNC;
+		else
+			ctrl->state = UART_CTRL_TRANSPORT_WAIT_FOR_REPLY;
+	}
 
 	return err;
 
