@@ -118,7 +118,7 @@ AVRDUDE_FLAGS = -c $(AVRDUDE_PROGRAMMER) -P $(AVRDUDE_PORT) -p $(MCU)
 
 %.elf:
 	$(call compile, LD, $(LDFLAGS) -o $@ $(filter %.o %.x,$($*.elf_DEPS)) $(LIBS))
-	$(call compile, SIZE, --mcu=$(MCU) -C $@)
+	$(call compile, SIZE, --mcu=$(MCU) --format=avr $@)
 
 flash-%: %.flash.ihex
 	$(call cmd, FLASH, $(AVRDUDE) $(AVRDUDE_FLAGS) -U flash:w:$<:i)
