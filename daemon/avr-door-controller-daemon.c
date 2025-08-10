@@ -25,6 +25,7 @@
 #include "../firmware/ctrl-cmd-types.h"
 
 #define AVR_DOOR_CTRL_REQUEST_TIMEOUT 500
+#define AVR_DOOR_CTRL_PING_TIMEOUT 5000
 
 struct avr_door_ctrld {
 	struct ubus_context *uctx;
@@ -46,9 +47,15 @@ static void avr_door_ctrl_send_next_request(struct avr_door_ctrl *ctrl)
 		ctrl->req = NULL;
 	}
 
-	/* If the pending list is empty there is nothing to do */
-	if (list_empty(&ctrl->pending_reqs))
+	/* If the pending list is empty schedule a ping command */
+	if (list_empty(&ctrl->pending_reqs)) {
+		uloop_timeout_set(&ctrl->ping_timeout,
+				  AVR_DOOR_CTRL_PING_TIMEOUT);
 		return;
+	} else {
+		/* Cancel the ping if another command is sent */
+		uloop_timeout_cancel(&ctrl->ping_timeout);
+	}
 
 	/* Get the next request out of the pending list */
 	ctrl->req = list_first_entry(&ctrl->pending_reqs,
@@ -191,6 +198,56 @@ static void avr_door_ctrl_on_transport_event(
 	}
 }
 
+static void avr_door_ctrl_ping_complete(
+	struct avr_door_ctrl_request *req, int err)
+{
+	struct avr_door_ctrl_transport *transport = req->ctrl->transport;
+
+	/* ENOENT is returned if the controller doesn't support the ping
+	 * command. That's also fine as the controller is reacting. */
+	if (err == 0 || err == -ENOENT)
+		return;
+
+	/* Ping failed, we should reopen the tty to reset
+	 * the controller.
+	 */
+	if (transport->reset)
+		transport->reset(transport);
+}
+
+static void avr_door_ctrl_ping_destroy(struct avr_door_ctrl_request *req)
+{
+	free(req);
+}
+
+static const
+struct avr_door_ctrl_request_handlers avr_door_ctrl_ping_handlers = {
+	.complete = avr_door_ctrl_ping_complete,
+	.destroy = avr_door_ctrl_ping_destroy,
+};
+
+static void avr_door_ctrl_on_ping_timeout(struct uloop_timeout *timeout)
+{
+	struct avr_door_ctrl *ctrl = container_of(
+		timeout, struct avr_door_ctrl, ping_timeout);
+	struct avr_door_ctrl_request *req;
+
+	req = calloc(1, sizeof(*req));
+	if (!req) {
+		/* What now, die? */
+		return;
+	}
+
+	/* Setup the request */
+	avr_door_ctrl_request_init(
+		req, ctrl, &avr_door_ctrl_ping_handlers, CTRL_CMD_PING, 0);
+
+	/* And send it */
+	avr_door_ctrl_request_send(req);
+
+	return;
+}
+
 int avr_door_ctrld_add_device(struct avr_door_ctrld *ctrld,
 			     const char *name, const char *path)
 {
@@ -205,6 +262,7 @@ int avr_door_ctrld_add_device(struct avr_door_ctrld *ctrld,
 	ctrl->daemon = ctrld;
 	INIT_LIST_HEAD(&ctrl->list);
 	INIT_LIST_HEAD(&ctrl->pending_reqs);
+	ctrl->ping_timeout.cb = avr_door_ctrl_on_ping_timeout;
 
 	err = avr_door_ctrl_uart_transport_open(path, &ctrl->transport);
 	if (err) {
@@ -231,6 +289,9 @@ int avr_door_ctrld_add_device(struct avr_door_ctrld *ctrld,
 		ULOG_ERR("Failed to add object %s\n", ctrl->uobject.name);
 		goto uloop_delete;
 	}
+
+	/* Start sending pings */
+	uloop_timeout_set(&ctrl->ping_timeout, AVR_DOOR_CTRL_PING_TIMEOUT);
 
 	list_add_tail(&ctrl->list, &ctrld->ctrls);
 

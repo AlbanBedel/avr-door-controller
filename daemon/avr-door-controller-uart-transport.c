@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <termios.h>
 
@@ -255,6 +256,26 @@ static int uart_ctrl_transport_send(struct avr_door_ctrl_transport *tr,
 	return 1;
 }
 
+static int uart_ctrl_transport_reset(struct avr_door_ctrl_transport *tr)
+{
+	int dtr = TIOCM_DTR;
+	int err;
+
+	/* Clear DTR */
+	err = ioctl(tr->fd, TIOCMBIC, &dtr);
+	if (err < 0)
+		return -errno;
+
+	/* A sleep might be needed */
+
+	/* Set DTR again */
+	err = ioctl(tr->fd, TIOCMBIS, &dtr);
+	if (err < 0)
+		return -errno;
+
+	return 0;
+}
+
 static void uart_ctrl_transport_close(struct avr_door_ctrl_transport *tr)
 {
 	struct avr_door_ctrl_uart_transport *uart = container_of(
@@ -303,6 +324,7 @@ int avr_door_ctrl_uart_transport_open(const char *dev, struct avr_door_ctrl_tran
 	uart->transport.fd = fd;
 	uart->transport.recv = uart_ctrl_transport_recv;
 	uart->transport.send = uart_ctrl_transport_send;
+	uart->transport.reset = uart_ctrl_transport_reset;
 	uart->transport.close = uart_ctrl_transport_close;
 
 	*tr = &uart->transport;

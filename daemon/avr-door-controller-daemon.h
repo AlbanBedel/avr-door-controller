@@ -91,6 +91,7 @@ struct avr_door_ctrl_transport {
 		    const struct avr_door_ctrl_msg *msg);
 	int (*recv)(struct avr_door_ctrl_transport *tr,
 		    struct avr_door_ctrl_msg *msg);
+	int (*reset)(struct avr_door_ctrl_transport *tr);
 	void (*close)(struct avr_door_ctrl_transport *tr);
 };
 
