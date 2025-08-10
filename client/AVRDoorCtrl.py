@@ -12,6 +12,12 @@ import functools
 import base64
 from urllib.parse import urldefrag
 
+try:
+    from Cryptodome.Hash import HMAC, SHA1
+except ModuleNotFoundError:
+    HMAC = None
+    SHA1 = None
+
 class AVRDoorCtrlUartTransport(object):
     """
     Implement send and receiving messages over a serial port.
@@ -990,6 +996,42 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
         self.set_all_access_records(acl)
         return {}
 
+    @classmethod
+    def get_otp_key(cls, root_key, key_id, card=None):
+        if HMAC is None:
+            raise NotImplementedError
+        root_key = base64.b16decode(root_key)
+        info = struct.pack('>H', key_id)
+        if card is not None:
+            info += struct.pack('>L', card)
+        info += struct.pack('B', 1)
+
+        hmac = HMAC.new(root_key, info, digestmod=SHA1)
+        key = hmac.digest()
+        return key
+
+    def access_record_add_otp_secret(self, rec, root_key):
+        if root_key is None:
+            return rec
+        if rec.get('pin_type') not in ('hotp', 'totp'):
+            return rec
+        try:
+            key = self.get_otp_key(root_key, rec.get('otp_key'),
+                                   rec.get('card'))
+        except NotImplementedError:
+            pass
+        else:
+            rec['otp_secret'] = base64.b32encode(key).decode('ascii')
+        return rec
+
+    def get_access_record(self, *args, root_key=None, **kwargs):
+        rec = super().get_access_record(*args, **kwargs)
+        return self.access_record_add_otp_secret(rec, root_key)
+
+    def get_access(self, *args, root_key=None, **kwargs):
+        rec = super().get_access(*args, **kwargs)
+        return self.access_record_add_otp_secret(rec, root_key)
+
 def add_parser_arguments_access_record(method_parser):
     method_parser.add_argument(
         '--record-version', type = int, default = 2,
@@ -1088,6 +1130,8 @@ if __name__ == '__main__':
     method_parser.add_argument(
         '--record-version', type = int, default = 2,
         help = 'Access record version to return')
+    method_parser.add_argument(
+        '--root-key', help = 'The controller root key in hexadecimal')
 
     method_parser = method_subparsers.add_parser(
         'set_access_record', help = 'Set an access record')
@@ -1105,6 +1149,8 @@ if __name__ == '__main__':
     method_parser = method_subparsers.add_parser(
         'get_access', help = 'Get the access for a card and/or pin')
     add_parser_arguments_access_record(method_parser)
+    method_parser.add_argument(
+        '--root-key', help = 'The controller root key in hexadecimal')
 
     method_parser = method_subparsers.add_parser(
         'get_used_access',
