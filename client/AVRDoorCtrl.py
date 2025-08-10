@@ -741,22 +741,186 @@ class AVRDoorCtrl(object):
     def __getattr__(self, attr):
         return getattr(self._handler, attr)
 
-    def get_all_access_records(self):
+    @staticmethod
+    def optionalmethod(arg):
+        def decorator(name, fallback):
+            @functools.wraps(fallback)
+            def wrapper(self, *args, **kwargs):
+                try:
+                    method = getattr(self._handler, name)
+                except AttributeError:
+                    return fallback(self, *args, **kwargs)
+                try:
+                    return method(*args, **kwargs)
+                except NotImplementedError:
+                    return fallback(self, *args, **kwargs)
+            return wrapper
+        # Support decorators without parenthesis
+        if callable(arg):
+            return decorator(arg.__name__, arg)
+        else:
+            return functools.partial(decorator, arg)
+
+    @staticmethod
+    def versionedmethod(field, default_version, name=None):
+        def decorator(default_version, name, fallback):
+            if name is None:
+                name = fallback.__name__
+            @functools.wraps(fallback)
+            def wrapper(self, *args, **kwargs):
+                version = kwargs.pop(field, default_version)
+                try:
+                   method = getattr(self, f'{name}_v{version}')
+                except AttributeError:
+                    return fallback(self, version, *args, **kwargs)
+                return method(*args, **kwargs)
+            return wrapper
+        return functools.partial(decorator, default_version, name)
+
+    @staticmethod
+    def _access_record_to_v2(rec, from_version):
+        if from_version == 1:
+            # The old card+pin can't be converted back without having
+            # either the card or pin.
+            if 'card+pin' in rec:
+                raise ValueError("Version 1 card+pin records can't be converted to version 2")
+            if 'card' in rec:
+                rec['card_type'] = 'id'
+            if 'pin' in rec:
+                rec['pin_type'] = 'fixed'
+            return rec
+        if from_version == 2:
+            return rec
+        raise ValueError(f"Can't convert record version {from_version} to version 2")
+
+    @staticmethod
+    def _access_record_to_v1(rec, from_version):
+        if from_version == 1:
+            return rec
+        if from_version == 2:
+            card_type = rec.pop('card_type', 'id')
+            if card_type != 'id':
+                raise ValueError(f"Card type {rec['card_type']} not supported by v1 records")
+            pin_type = rec.pop('pin_type', 'fixed')
+            if pin_type != 'fixed':
+                raise ValueError(f"PIN type {rec['pin_type']} not supported by v1 records")
+            return {k: v for k, v in rec.items() if k in ('doors', 'used', 'pin', 'card')}
+        raise ValueError(f"Can't convert record version {from_version} to version 1")
+
+    @optionalmethod
+    def get_access_record_v2(self, index, **kwargs):
+        # Fallback implementation when the handler doesn't support v2 records
+        rec = self._handler.get_access_record(index, **kwargs)
+        return self._access_record_to_v2(rec, from_version=1)
+
+    @optionalmethod('get_access_record')
+    def get_access_record_v1(self, index, **kwargs):
+        # Fallback implementation when the handler doesn't support v1 records
+        rec = self._handler.get_access_record_v2(index, **kwargs)
+        return self._access_record_to_v1(rec, from_version=2)
+
+    @versionedmethod('record_version', 2)
+    def get_access_record(self, version, *args, **kwargs):
+        raise ValueError(f'Record version {version} not supported')
+
+
+    @optionalmethod
+    def get_access_v2(self, **kwargs):
+        # Fallback implementation when the handler doesn't support v2 records
+        rec = self._handler.get_access(**kwargs)
+        return self._access_record_to_v2(rec, from_version=1)
+
+    @optionalmethod('get_access')
+    def get_access_v1(self, **kwargs):
+        # Fallback implementation when the handler doesn't support v1 records
+        rec = self._handler.get_access_v2(**kwargs)
+        return self._access_record_to_v1(rec, from_version=2)
+
+    @versionedmethod('record_version', 2)
+    def get_access(self, version, *args, **kwargs):
+        # Fallback when the requested version is not found
+        raise ValueError(f'Record version {version} not supported')
+
+
+    @optionalmethod
+    def set_access_record_v2(self, index, **kwargs):
+        # Fallback implementation when the handler doesn't support v2 records
+        rec = self._access_record_to_v1(kwargs, from_version=2)
+        return self._handler.set_access_record(index, rec)
+
+    @optionalmethod('set_access_record')
+    def set_access_record_v1(self, index, **kwargs):
+        # Fallback implementation when the handler doesn't support v1 records
+        rec = self._access_record_to_v2(kwargs, from_version=1)
+        return self._handler.set_access_record_v2(index, rec)
+
+    @versionedmethod('record_version', 2)
+    def set_access_record(self, version, *args, **kwargs):
+        # Fallback when the requested version is not found
+        raise ValueError(f'Record version {version} not supported')
+
+
+    @optionalmethod
+    def set_access_v2(self, **kwargs):
+        # Fallback implementation when the handler doesn't support v2 records
+        rec = self._access_record_to_v1(kwargs, from_version=2)
+        return self._handler.set_access(rec)
+
+    @optionalmethod('set_access_record')
+    def set_access_v1(self, **kwargs):
+        # Fallback implementation when the handler doesn't support v1 records
+        rec = self._access_record_to_v2(kwargs, from_version=1)
+        return self._handler.set_access_v2(rec)
+
+    @versionedmethod('record_version', 2)
+    def set_access(self, **kwargs):
+        # Fallback when the requested version is not found
+        raise ValueError(f'Record version {version} not supported')
+
+    def get_all_access_records(self, record_version=2):
         desc = self.get_device_descriptor()
         acl = {}
         for i in range(desc["num_access_records"]):
-            a = self.get_access_record(index=i)
+            try:
+                a = self.get_access_record(index=i, record_version=record_version)
+            except AVRDoorCtrlError as err:
+                if err.errno == AVRDoorCtrlError.EBUSY:
+                    continue
+                if err.errno == AVRDoorCtrlError.ENOENT:
+                    continue
+                raise
             if 'doors' in a:
                 acl[i] = a
         return acl
 
-    def set_all_access_records(self, acl):
+    def set_all_access_records(self, acl, record_version=2):
         self.remove_all_access()
         for idx in acl:
             record = acl[idx]
             if 'index' not in record:
                 record['index'] = idx
-            self.set_access_record(**record)
+            self.set_access_record(**record, record_version=record_version)
+
+    @optionalmethod
+    def get_used_access_v2(self, *args, **kwargs):
+        # Fallback implementation when the handler doesn't support v2 records
+        resp = self._handler.get_used_access(**kwargs)
+        return {
+            'used': [self._access_record_to_v2(rec, from_version=1) for rec in resp['used']],
+        }
+
+    @optionalmethod('get_used_access')
+    def get_used_access_v1(self, *args, **kwargs):
+        # Fallback implementation when the handler doesn't support v2 records
+        resp = self._handler.get_used_access_v2(**kwargs)
+        return {
+            'used': [self._access_record_to_v1(rec, from_version=2) for rec in resp['used']],
+        }
+
+    @versionedmethod('record_version', 2)
+    def get_used_access(self, version, *args, **kwargs):
+        # Fallback when the requested version is not found
+        raise ValueError(f'Record version {version} not supported')
 
 class AVRDoorCtrlTool(AVRDoorCtrl):
     def show_events(self):
@@ -768,14 +932,14 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
             except KeyboardInterrupt:
                 break
 
-    def backup_access_records(self, path):
+    def backup_access_records(self, path, record_version=2):
         acl = self.get_all_access_records()
         fd = open(path, 'w')
         fd.write(json.dumps(acl, sort_keys=True, indent=4) + '\n')
         fd.close()
         return {}
 
-    def restore_access_records(self, path):
+    def restore_access_records(self, path, record_version=2):
         fd = open(path, 'r')
         acl = json.loads(fd.read())
         self.set_all_access_records(acl)
@@ -783,11 +947,39 @@ class AVRDoorCtrlTool(AVRDoorCtrl):
 
 def add_parser_arguments_access_record(method_parser):
     method_parser.add_argument(
+        '--record-version', type = int, default = 2,
+        help = 'Access record version to return')
+    method_parser.add_argument(
+        '--card-type', help = 'Card type')
+    method_parser.add_argument(
         '--card', type = int, help = 'Card number')
     method_parser.add_argument(
+        '--pin-type', help = 'PIN type')
+    method_parser.add_argument(
         '--pin', help = 'PIN with 1 to 8 digits')
+    method_parser.add_argument(
+        '--otp-key', type = int,
+        help = 'Index of the OTP key for HOTP and TOTP PIN')
 
 def add_parser_arguments_access_record_properties(method_parser):
+    method_parser.add_argument(
+        '--otp-digits', type = int, default = 6,
+        help = 'Number of digits for H/TOTP PIN')
+    method_parser.add_argument(
+        '--hotp-resync-limit', type = int, default = 1,
+        help = 'Upper limit for re-syncing the HOTP counter')
+    method_parser.add_argument(
+        '--hotp-counter', type = int, default = 0,
+        help = 'Current value of the HOTP counter')
+    method_parser.add_argument(
+        '--totp-interval', type = int, default = 60,
+        help = 'Interval in minutes for TOTP PIN')
+    method_parser.add_argument(
+        '--totp-allow-followings', type = int, default = 0,
+        help = 'Number of following PIN to allow for H/TOTP')
+    method_parser.add_argument(
+        '--totp-allow-previous', type = int, default = 1,
+        help = 'Number of previous PIN to allow for H/TOTP')
     method_parser.add_argument(
         '--used', action='store_true', help = 'Mark the record as used')
     method_parser.add_argument(
@@ -840,6 +1032,9 @@ if __name__ == '__main__':
     method_parser.add_argument(
         '--index', type = int, required = True,
         help = 'Access record index')
+    method_parser.add_argument(
+        '--record-version', type = int, default = 2,
+        help = 'Access record version to return')
 
     method_parser = method_subparsers.add_parser(
         'set_access_record', help = 'Set an access record')
@@ -864,6 +1059,9 @@ if __name__ == '__main__':
     method_parser.add_argument(
         '--clear', action='store_true',
         help = 'Clear the used flags while going through the records')
+    method_parser.add_argument(
+        '--record-version', type = int, default = 2,
+        help = 'Access record version to return')
 
     method_parser = method_subparsers.add_parser(
         'remove_all_access', help = 'Erase all access records')
@@ -875,11 +1073,17 @@ if __name__ == '__main__':
         'backup_access_records',
         help = 'Backup all the access records to file')
     method_parser.add_argument(
+        '--record-version', type = int, default = 2,
+        help = 'Access record version to return')
+    method_parser.add_argument(
         'path', help = 'File to save the access records to')
 
     method_parser = method_subparsers.add_parser(
         'restore_access_records',
         help = 'Restore all the access records from a backup file')
+    method_parser.add_argument(
+        '--record-version', type = int, default = 2,
+        help = 'Access record version to return')
     method_parser.add_argument(
         'path', help = 'File to read the access records from')
 
@@ -910,6 +1114,15 @@ if __name__ == '__main__':
         if v is not None:
             url_kwargs[f] = v
         delattr(args, f)
+
+    if method in [ 'set_access_record', 'set_access', 'get_access' ] and \
+       args.record_version == 2:
+        if args.card_type is None and args.card is not None:
+            args.card_type = 'id'
+        if args.pin_type is None and args.pin is not None:
+            args.pin_type = 'fixed'
+        if args.pin_type is None and args.otp_key is not None:
+            args.pin_type = 'totp'
 
     logging.basicConfig(level=log_level, format='%(levelname)s: %(message)s')
     door = AVRDoorCtrlTool(url, **url_kwargs)
