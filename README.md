@@ -48,12 +48,12 @@ The firmware currently support:
 * 26 bits wiegand RFID readers
 * RFID reader with keypad for PIN
 * Access with PIN only, card only or card + PIN
+* TOTP and HOTP PIN
 * Simple access records management over USB
 
 The following is planned:
 
 * Support external EEPROM for more access records
-* Support RTC to allow various time dependent access control
 * 34 bits RFID cards
 
 ## Daemon
