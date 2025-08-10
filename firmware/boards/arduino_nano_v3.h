@@ -12,3 +12,6 @@
 #define HAS_RTC			1
 #define DS3231_ADDR		0x68
 #define DS3231_IRQ		IRQ(PC, 11)
+
+/* Enable TOTP and HOTP support */
+#define WITH_OTP		1

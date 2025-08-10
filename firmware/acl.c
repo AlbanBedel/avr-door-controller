@@ -34,7 +34,7 @@ static int8_t acl_check_pin(struct access_record_v2 *rec, uint32_t pin)
 
 	case ACCESS_RECORD_TYPE_PIN_HOTP:
 	case ACCESS_RECORD_TYPE_PIN_TOTP:
-		return 0; /* TODO */
+		return acl_check_otp_pin(rec, pin);
 
 	default: /* should not happen */
 		return 0;
@@ -116,4 +116,9 @@ int8_t acl_check_access(uint8_t type, uint32_t card, uint32_t pin,
 	}
 
 	return -EPERM;
+}
+
+int8_t acl_init(void)
+{
+	return acl_load_otp_root_key();
 }

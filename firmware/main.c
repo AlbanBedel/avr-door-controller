@@ -78,6 +78,8 @@ int main(void)
 	if (HAS_I2C)
 		err = i2c_init(I2C_MAX_RATE);
 	if (!err)
+		err = acl_init();
+	if (!err)
 		err = ctrl_cmd_init();
 	if (!err)
 		err = init_doors();

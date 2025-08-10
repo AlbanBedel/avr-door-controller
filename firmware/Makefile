@@ -66,6 +66,11 @@ avr-door-controller.elf_$(WITH_RTC) +=	\
 avr-door-controller.elf_$(WITH_RTC_DS3231) +=	\
 	rtc-ds3231.o			\
 
+avr-door-controller.elf_$(WITH_OTP) +=	\
+	hotp.o				\
+	sha1.o				\
+	acl_otp.o			\
+
 avr-door-controller.flash.ihex_DEPS :=	\
 	avr-door-controller.elf		\
 
