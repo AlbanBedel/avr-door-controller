@@ -9,6 +9,7 @@ import time
 import calendar
 import logging
 import functools
+import base64
 from urllib.parse import urldefrag
 
 class AVRDoorCtrlUartTransport(object):
@@ -171,6 +172,8 @@ class AVRDoorCtrlSerialHandler(object):
     CMD_GET_DEVICE_DESCRIPTOR = 0
     CMD_GET_TIME = 2
     CMD_SET_TIME = 3
+    CMD_GET_CONTROLLER_CONFIG = 4
+    CMD_SET_CONTROLLER_CONFIG = 5
     CMD_GET_DOOR_CONFIG = 10
     CMD_SET_DOOR_CONFIG = 11
     CMD_GET_ACCESS_RECORD = 20
@@ -207,6 +210,8 @@ class AVRDoorCtrlSerialHandler(object):
     ACCESS_RECORD_TYPE_PIN_FIXED = 1 << 1
     ACCESS_RECORD_TYPE_PIN_HOTP = 2 << 1
     ACCESS_RECORD_TYPE_PIN_TOTP = 3 << 1
+
+    CONTROLLER_KEY_SIZE = 20
 
     @staticmethod
     def parse_version(version):
@@ -333,6 +338,25 @@ class AVRDoorCtrlSerialHandler(object):
         response = self.send_cmd(
             self.CMD_GET_DEVICE_DESCRIPTOR, None, 5)
         return self.unpack_device_descriptor(response)
+
+    def get_controller_config(self):
+        response = self.send_cmd(
+            self.CMD_GET_CONTROLLER_CONFIG, None,
+            self.CONTROLLER_KEY_SIZE)
+        key = response[0:20]
+        ret = {
+            "key": base64.b16encode(key).decode('ascii'),
+        }
+        return ret
+
+    def set_controller_config(self, root_key=None):
+        if root_key is not None:
+            key = base64.b16decode(root_key).zfill(self.CONTROLLER_KEY_SIZE)
+            key = key[:self.CONTROLLER_KEY_SIZE]
+        else:
+            key = b'\x00' * self.OTP_KEY_SIZE
+        self.send_cmd(self.CMD_SET_CONTROLLER_CONFIG, key)
+        return {}
 
     def get_door_config(self, index):
         response = self.send_cmd(self.CMD_GET_DOOR_CONFIG,
@@ -1032,6 +1056,14 @@ if __name__ == '__main__':
 
     method_parser = method_subparsers.add_parser(
         'get_device_descriptor', help = 'Get the device descriptor')
+
+    method_parser = method_subparsers.add_parser(
+        'get_controller_config', help = 'Get the controller configuration')
+
+    method_parser = method_subparsers.add_parser(
+        'set_controller_config', help = 'Set the controller configuration')
+    method_parser.add_argument(
+        '--root-key', help = 'The controller root key in hexadecial (20 bytes)')
 
     method_parser = method_subparsers.add_parser(
         'get_door_config', help = 'Get a door configuration')
