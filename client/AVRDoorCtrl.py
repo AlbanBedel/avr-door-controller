@@ -8,6 +8,7 @@ import json
 import time
 import calendar
 import logging
+import functools
 from urllib.parse import urldefrag
 
 class AVRDoorCtrlUartTransport(object):
@@ -178,6 +179,11 @@ class AVRDoorCtrlSerialHandler(object):
     CMD_REMOVE_ALL_ACCESS = 23
     CMD_GET_ACCESS = 24
     CMD_GET_USED_ACCESS = 25
+    CMD_GET_ACCESS_RECORD_V2 = 30
+    CMD_SET_ACCESS_RECORD_V2 = 31
+    CMD_SET_ACCESS_V2 = 32
+    CMD_GET_ACCESS_V2 = 33
+    CMD_GET_USED_ACCESS_V2 = 34
 
     EVENT_BASE = 127
     EVENT_STARTED = EVENT_BASE + 0
@@ -192,6 +198,18 @@ class AVRDoorCtrlSerialHandler(object):
     ACCESS_TYPE_CARD = 2
     ACCESS_TYPE_CARD_AND_PIN = ACCESS_TYPE_CARD | ACCESS_TYPE_PIN
 
+    ACCESS_RECORD_TYPE_CARD_NONE = 0
+    ACCESS_RECORD_TYPE_CARD_ID = 1
+
+    ACCESS_RECORD_TYPE_PIN_NONE = 0
+    ACCESS_RECORD_TYPE_PIN_FIXED = 1 << 1
+    ACCESS_RECORD_TYPE_PIN_HOTP = 2 << 1
+    ACCESS_RECORD_TYPE_PIN_TOTP = 3 << 1
+
+    @staticmethod
+    def parse_version(version):
+        major, minor = version.split('.')
+        return int(major) * 1000 + int(minor)
 
     def __init__(self, dev, *args, **kwargs):
         self._events = []
@@ -218,6 +236,18 @@ class AVRDoorCtrlSerialHandler(object):
             raise
 
         logging.info(f"Device version {version} started")
+        self._version = self.parse_version(version)
+
+    @staticmethod
+    def since_version(version):
+        def decorator(version, method):
+            @functools.wraps(method)
+            def wrapper(self, *args, **kwargs):
+                if self._version < version:
+                    raise NotImplementedError
+                return method(self, *args, **kwargs)
+            return wrapper
+        return functools.partial(decorator, version)
 
     def read_msg(self):
         type, payload = self._transport.read_msg()
@@ -349,6 +379,48 @@ class AVRDoorCtrlSerialHandler(object):
         return ret
 
     @classmethod
+    def _unpack_access_record_v2(self, response):
+        hdr, card, pin = struct.unpack("<BLL", response[0:9])
+        ret = {
+            "doors": (hdr >> 4) & 0xF,
+            "used": bool(hdr & (1 << 3)),
+        }
+
+        card_type = hdr & 1
+        if card_type == self.ACCESS_RECORD_TYPE_CARD_ID:
+            ret['card_type'] = 'id'
+            ret['card'] = card
+
+        pin_type = hdr & (3 << 1)
+        if pin_type == self.ACCESS_RECORD_TYPE_PIN_FIXED:
+            ret['pin_type'] = 'fixed'
+            ret['pin'] = self.unpack_pin(pin)
+        elif pin_type in (self.ACCESS_RECORD_TYPE_PIN_HOTP,
+                          self.ACCESS_RECORD_TYPE_PIN_TOTP):
+            ret['pin_type'] = 'hotp' \
+                if pin_type == self.ACCESS_RECORD_TYPE_PIN_HOTP \
+                else 'totp'
+            ret['otp_key'] = pin & 0x3FF
+            ret['otp_digits'] = ((pin >> 10) & 3) + 6
+            if pin_type == self.ACCESS_RECORD_TYPE_PIN_HOTP:
+                ret['hotp_resync_limit'] = (pin >> 12) & 0xF
+                ret['hotp_counter'] = (pin >> 16) & 0xFFFF
+            else:
+                ret['totp_allow_followings'] = (pin >> 12) & 3
+                ret['totp_allow_previous'] = (pin >> 14) & 3
+                ret['totp_interval'] = (pin >> 16) & 0xFFFF
+
+        return ret
+
+    @since_version(3)
+    def get_access_record_v2(self, index):
+        response = self.send_cmd(self.CMD_GET_ACCESS_RECORD_V2,
+                                 struct.pack("<H", int(index)), 5)
+        ret = self._unpack_access_record_v2(response)
+        ret['index'] = index
+        return ret
+
+    @classmethod
     def _pack_access_record(self, pin = None, card = None,
                             doors = 0, used = False, card_pin = None):
         if card_pin != None:
@@ -384,6 +456,101 @@ class AVRDoorCtrlSerialHandler(object):
         self.send_cmd(self.CMD_SET_ACCESS, req, 0)
         return {}
 
+    @classmethod
+    def _pack_access_record_v2_type(self, card_type, pin_type):
+        rec_type = 0
+
+        if card_type is None:
+            pass
+        elif card_type == 'id':
+            rec_type |= self.ACCESS_RECORD_TYPE_CARD_ID
+        else:
+            raise ValueError('Invalid card type')
+
+        if pin_type is None:
+            pass
+        elif pin_type == 'fixed':
+            rec_type |= self.ACCESS_RECORD_TYPE_PIN_FIXED
+        elif pin_type == 'hotp':
+            rec_type |= self.ACCESS_RECORD_TYPE_PIN_HOTP
+        elif pin_type == 'totp':
+            rec_type |= self.ACCESS_RECORD_TYPE_PIN_TOTP
+        else:
+            raise ValueError('Invalid pin type')
+
+        if rec_type == 0:
+            raise ValueError('No card or pin given')
+
+        return rec_type
+
+    @classmethod
+    def _pack_access_record_v2(self, card_type = None, pin_type = None,
+                               doors = 0, used = False, card = None,
+                               pin = None, otp_key = None,
+                               otp_digits = 6, hotp_resync_limit = 1,
+                               hotp_counter = 0, totp_interval = 60,
+                               totp_allow_followings = 0,
+                               totp_allow_previous = 0):
+        if pin_type in ('totp', 'hotp'):
+            if otp_digits < 6 or otp_digits > 10:
+                raise ValueError('OTP digits must be between 6 and 10')
+        if pin_type == 'totp':
+            if totp_allow_followings < 0 or totp_allow_followings > 3:
+                raise ValueError('TOTP allow followings must be between 0 and 3')
+            if totp_allow_previous < 0 or totp_allow_previous > 3:
+                raise ValueError('TOTP allow previous must be between 0 and 3')
+            if totp_interval < 0:
+                raise ValueError('TOTP interval must be >= 0')
+        if pin_type == 'hotp':
+            if hotp_resync_limit < 0 or hotp_resync_limit > 15:
+                raise ValueError('HOTP resync limit must be between 0 and 15')
+            if hotp_counter < 0:
+                raise ValueError('HOTP counter must be >= 0')
+
+        hdr = self._pack_access_record_v2_type(card_type, pin_type)
+        hdr |= (bool(used) << 3) | ((int(doors) & 0xF) << 4)
+        rec_hdr = struct.pack("B", hdr)
+
+        if card_type is None:
+            rec_card = struct.pack("<L", 0)
+        elif card_type == 'id':
+            rec_card = struct.pack("<L", int(card))
+        else:
+            raise ValueError('Invalid card type')
+
+        if pin_type is None:
+            rec_pin = struct.pack("<L", 0)
+        elif pin_type == 'fixed':
+            rec_pin = struct.pack("<L", self.pack_pin(str(pin)))
+        elif pin_type in ('hotp', 'totp'):
+            otp_cfg = otp_key & 0x3FF
+            otp_cfg |= ((otp_digits - 6) & 3) << 10
+            if pin_type == 'totp':
+                otp_cfg |= (totp_allow_followings & 3) << 12
+                otp_cfg |= (totp_allow_previous & 3) << 14
+                c = totp_interval
+            if pin_type == 'hotp':
+                otp_cfg |= (hotp_resync_limit & 0xF) << 12
+                c = hotp_counter
+            rec_pin = struct.pack("<HH", otp_cfg, c)
+        else:
+            raise ValueError('Invalid PIN type')
+
+        return rec_hdr + rec_card + rec_pin
+
+    @since_version(3)
+    def set_access_record_v2(self, index, **kwargs):
+        req = struct.pack("<H", index)
+        req += self._pack_access_record_v2(**kwargs)
+        self.send_cmd(self.CMD_SET_ACCESS_RECORD_V2, req, 0)
+        return {}
+
+    @since_version(3)
+    def set_access_v2(self, **kwargs):
+        req = self._pack_access_record_v2(**kwargs)
+        self.send_cmd(self.CMD_SET_ACCESS_V2, req, 0)
+        return {}
+
     def get_access(self, pin = None, card = None):
         if pin == None and card == None:
             raise ValueError('No card number or pin given')
@@ -392,6 +559,37 @@ class AVRDoorCtrlSerialHandler(object):
         return {
             'doors': struct.unpack('B', response[0:1])[0],
         }
+
+    @classmethod
+    def _pack_get_access_req_v2(self, card_type = None, pin_type = None,
+                                card = None, pin = None, otp_key = None,
+                                **kwargs):
+
+        req_type = self._pack_access_record_v2_type(card_type, pin_type)
+
+        if card_type is None:
+            req_card = 0
+        elif card_type == 'id':
+            req_card = int(card)
+        else:
+            raise ValueError('Invalid card type')
+
+        if pin_type is None:
+            req_pin = 0
+        elif pin_type == 'fixed':
+            req_pin = self.pack_pin(pin)
+        elif pin_type in ('totp', 'hotp'):
+            req_pin = int(otp_key)
+        else:
+            raise ValueError('Invalid pin type')
+
+        return struct.pack('<BLL', req_type, req_card, req_pin)
+
+    @since_version(3)
+    def get_access_v2(self, **kwargs):
+        req = self._pack_get_access_req_v2(**kwargs)
+        response = self.send_cmd(self.CMD_GET_ACCESS_V2, req, 1)
+        return self._unpack_access_record_v2(response)
 
     def remove_all_access(self):
         self.send_cmd(self.CMD_REMOVE_ALL_ACCESS)
@@ -413,6 +611,27 @@ class AVRDoorCtrlSerialHandler(object):
     def get_used_access(self, clear = False):
         return {
             'used': list(self._generate_used_access(clear)),
+        }
+
+    def _generate_used_access_v2(self, clear):
+        i = 0
+        while True:
+            req = struct.pack("<HB", int(i), clear)
+            try:
+                response = self.send_cmd(self.CMD_GET_USED_ACCESS_V2, req, 11)
+            except AVRDoorCtrlError as err:
+                if err.errno == AVRDoorCtrlError.ENOENT:
+                    return
+                raise
+            i, = struct.unpack("<H", response[0:2])
+            rec = self._unpack_access_record_v2(response[2:])
+            rec['index'] = i - 1
+            yield rec
+
+    @since_version(3)
+    def get_used_access_v2(self, clear = False):
+        return {
+            'used': list(self._generate_used_access_v2(clear)),
         }
 
     def get_time(self):
