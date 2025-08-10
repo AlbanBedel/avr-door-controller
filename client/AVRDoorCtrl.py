@@ -211,7 +211,7 @@ class AVRDoorCtrlSerialHandler(object):
         major, minor = version.split('.')
         return int(major) * 1000 + int(minor)
 
-    def __init__(self, dev, *args, **kwargs):
+    def __init__(self, dev, *args, controller_version = None, **kwargs):
         self._events = []
         self._descriptor = None
         if dev.startswith('/dev/tty'):
@@ -236,6 +236,9 @@ class AVRDoorCtrlSerialHandler(object):
             raise
 
         logging.info(f"Device version {version} started")
+        if controller_version is not None:
+            logging.warning(f"Forcing controller version {controller_version}")
+            version = controller_version
         self._version = self.parse_version(version)
 
     @staticmethod
@@ -808,6 +811,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--log-level', choices=('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'),
         help = 'Log level', default='WARNING')
+    parser.add_argument(
+        '--controller-version', help = 'Force the UART protocol version')
 
     # Method parsers
     method_subparsers = parser.add_subparsers(dest='method')
@@ -900,7 +905,7 @@ if __name__ == '__main__':
     del args.method
 
     url_kwargs = {}
-    for f in [ 'timeout', 'username', 'password' ]:
+    for f in [ 'timeout', 'username', 'password', 'controller_version' ]:
         v = getattr(args, f)
         if v is not None:
             url_kwargs[f] = v
